@@ -1,0 +1,16 @@
+{
+  "name": "musicbrainz-mcp",
+  "displayName": "MusicBrainz",
+  "version": "0.1.0",
+  "description": "MCP server for MusicBrainz — search/browse music metadata, cover art, and submit tags, ratings, and collections",
+  "author": {
+    "name": "Chris Hall",
+    "email": "chris.c.hall@gmail.com"
+  },
+  "homepage": "https://github.com/chrischall/musicbrainz-mcp",
+  "repository": "https://github.com/chrischall/musicbrainz-mcp",
+  "license": "MIT",
+  "keywords": ["musicbrainz", "music-metadata", "cover-art", "mcp"],
+  "skills": "./SKILL.md",
+  "mcp": "./.mcp.json"
+}

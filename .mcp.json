@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "musicbrainz": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "env": {
+        "MUSICBRAINZ_USER_AGENT": "${MUSICBRAINZ_USER_AGENT}",
+        "MUSICBRAINZ_OAUTH_CLIENT_ID": "${MUSICBRAINZ_OAUTH_CLIENT_ID}",
+        "MUSICBRAINZ_OAUTH_CLIENT_SECRET": "${MUSICBRAINZ_OAUTH_CLIENT_SECRET}",
+        "MUSICBRAINZ_OAUTH_REFRESH_TOKEN": "${MUSICBRAINZ_OAUTH_REFRESH_TOKEN}"
+      }
+    }
+  }
+}

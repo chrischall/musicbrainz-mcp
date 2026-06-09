@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chrischall/musicbrainz-mcp",
+  "description": "MusicBrainz MCP — search/browse music metadata, cover art, and submit tags/ratings/collections",
+  "repository": {
+    "url": "https://github.com/chrischall/musicbrainz-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "musicbrainz-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MUSICBRAINZ_USER_AGENT",
+          "description": "Optional override for the User-Agent sent to MusicBrainz.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "MUSICBRAINZ_OAUTH_CLIENT_ID",
+          "description": "OAuth client ID (write tools only). Register at musicbrainz.org/account/applications.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "MUSICBRAINZ_OAUTH_CLIENT_SECRET",
+          "description": "OAuth client secret (write tools only).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "MUSICBRAINZ_OAUTH_REFRESH_TOKEN",
+          "description": "OAuth refresh token with tag/rating/collection scopes (enables the write tools).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

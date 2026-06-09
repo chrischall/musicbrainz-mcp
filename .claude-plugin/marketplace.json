@@ -1,0 +1,29 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "musicbrainz-mcp",
+  "owner": {
+    "name": "Chris Hall",
+    "email": "chris.c.hall@gmail.com"
+  },
+  "metadata": {
+    "description": "MCP server for MusicBrainz — music metadata, cover art, and your own tags, ratings, and collections",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "musicbrainz-mcp",
+      "displayName": "MusicBrainz",
+      "source": "./",
+      "description": "MCP server for MusicBrainz — search/browse music metadata, fetch cover art, and submit tags, ratings, and collections",
+      "version": "0.1.0",
+      "author": {
+        "name": "Chris Hall"
+      },
+      "homepage": "https://github.com/chrischall/musicbrainz-mcp",
+      "repository": "https://github.com/chrischall/musicbrainz-mcp",
+      "license": "MIT",
+      "keywords": ["musicbrainz", "music-metadata", "cover-art", "mcp"],
+      "category": "music"
+    }
+  ]
+}
