@@ -3,7 +3,7 @@
   "manifest_version": "0.3",
   "name": "musicbrainz-mcp",
   "display_name": "MusicBrainz",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Search and browse the MusicBrainz music encyclopedia, fetch cover art, and submit your own tags, ratings, and collections",
   "author": {
     "name": "Chris Chall",
@@ -17,13 +17,21 @@
   "homepage": "https://github.com/chrischall/musicbrainz-mcp",
   "support": "https://github.com/chrischall/musicbrainz-mcp/issues",
   "license": "MIT",
-  "keywords": ["musicbrainz", "music-metadata", "discography", "cover-art", "music"],
+  "keywords": [
+    "musicbrainz",
+    "music-metadata",
+    "discography",
+    "cover-art",
+    "music"
+  ],
   "server": {
     "type": "node",
     "entry_point": "dist/bundle.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/bundle.js"],
+      "args": [
+        "${__dirname}/dist/bundle.js"
+      ],
       "env": {
         "MUSICBRAINZ_USER_AGENT": "${user_config.musicbrainz_user_agent}",
         "MUSICBRAINZ_OAUTH_CLIENT_ID": "${user_config.musicbrainz_oauth_client_id}",
@@ -62,18 +70,49 @@
     }
   },
   "tools": [
-    { "name": "musicbrainz_search", "description": "Search a MusicBrainz entity type with a Lucene query" },
-    { "name": "musicbrainz_lookup", "description": "Look up a MusicBrainz entity by MBID, with optional inc subqueries" },
-    { "name": "musicbrainz_browse", "description": "List entities linked to another (e.g. all releases by an artist)" },
-    { "name": "musicbrainz_cover_art", "description": "Get Cover Art Archive images for a release or release-group" },
-    { "name": "musicbrainz_resolve", "description": "Resolve a musicbrainz.org URL to its entity + MBID" },
-    { "name": "musicbrainz_healthcheck", "description": "Verify MusicBrainz connectivity and OAuth config" },
-    { "name": "musicbrainz_submit_tags", "description": "Submit user tags to your account (OAuth; confirm-gated)" },
-    { "name": "musicbrainz_submit_rating", "description": "Submit a user rating to your account (OAuth; confirm-gated)" },
-    { "name": "musicbrainz_modify_collection", "description": "Add/remove entities in your collection (OAuth; confirm-gated)" }
+    {
+      "name": "musicbrainz_search",
+      "description": "Search a MusicBrainz entity type with a Lucene query"
+    },
+    {
+      "name": "musicbrainz_lookup",
+      "description": "Look up a MusicBrainz entity by MBID, with optional inc subqueries"
+    },
+    {
+      "name": "musicbrainz_browse",
+      "description": "List entities linked to another (e.g. all releases by an artist)"
+    },
+    {
+      "name": "musicbrainz_cover_art",
+      "description": "Get Cover Art Archive images for a release or release-group"
+    },
+    {
+      "name": "musicbrainz_resolve",
+      "description": "Resolve a musicbrainz.org URL to its entity + MBID"
+    },
+    {
+      "name": "musicbrainz_healthcheck",
+      "description": "Verify MusicBrainz connectivity and OAuth config"
+    },
+    {
+      "name": "musicbrainz_submit_tags",
+      "description": "Submit user tags to your account (OAuth; confirm-gated)"
+    },
+    {
+      "name": "musicbrainz_submit_rating",
+      "description": "Submit a user rating to your account (OAuth; confirm-gated)"
+    },
+    {
+      "name": "musicbrainz_modify_collection",
+      "description": "Add/remove entities in your collection (OAuth; confirm-gated)"
+    }
   ],
   "compatibility": {
-    "platforms": ["darwin", "win32", "linux"],
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
     "runtimes": {
       "node": ">=22.5"
     }
