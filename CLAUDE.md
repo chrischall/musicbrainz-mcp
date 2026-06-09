@@ -61,7 +61,7 @@ Every mutating tool takes `confirm` (`schemaConfirm`). Without `confirm: true` i
 - tags/ratings: `POST /ws/2/tag` / `/ws/2/rating` with mmd-2.0 XML.
 - collections: bodyless `PUT`/`DELETE /ws/2/collection/<mbid>/<entity-type>/<MBID>;<MBID>`.
 
-> **Live write-verification is gated on real OAuth credentials.** The write tools are unit-tested against the pinned request shapes, but a real submission has not yet been confirmed end-to-end. To verify: register an app, obtain a refresh token, then submit a tag/rating to one of your own entities and confirm it on musicbrainz.org.
+> **Write path verified live.** The `tag` submission was confirmed end-to-end against the production API (`POST /ws/2/tag` → `200 {"message":"OK"}`, the tag appeared on an authenticated `inc=user-tags` re-read, and `withdraw` removed it). Ratings and collections share the same `client.write` auth path (bearer + `client=` param) and are unit-tested against the pinned shapes. The OAuth refresh-token exchange is also confirmed working.
 
 ## Environment
 
@@ -92,5 +92,6 @@ Version lives in `src/version.ts` (`VERSION`, marked `// x-release-please-versio
 - **One throttle**: never call MusicBrainz outside `client` — you'd bypass the 1 req/s spacer.
 - **Write responses are XML**, not JSON: `client.write` returns raw text.
 - **Cover Art Archive is a separate host** (`coverartarchive.org`); 404 = no art (handled with a helpful error).
+- **`/ws/2` GET responses are cached.** Right after a write, an authenticated `inc=user-tags`/`inc=user-ratings` re-read can serve a *stale cached body* (it looked like the write/withdraw hadn't applied when it had). Add a unique throwaway query param (e.g. `&_=<nonce>`) to bust the cache when verifying a write by re-reading. The read tools are unaffected — this only bites write-verification reads.
 - **MBIDs are UUIDs**: `entities.ts` `MbidSchema` validates them; search returns MBIDs to feed into lookup.
 - **stdio transport**: server logs to **stderr** only — stdout is reserved for JSON-RPC.
