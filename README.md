@@ -4,8 +4,6 @@
 [![npm](https://img.shields.io/npm/v/musicbrainz-mcp)](https://www.npmjs.com/package/musicbrainz-mcp)
 [![license](https://img.shields.io/npm/l/musicbrainz-mcp)](LICENSE)
 
-[![CI](https://github.com/chrischall/musicbrainz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/chrischall/musicbrainz-mcp/actions/workflows/ci.yml)
-
 An MCP server for [MusicBrainz](https://musicbrainz.org), the open music encyclopedia. It gives Claude live access to MusicBrainz metadata — artists, releases, recordings, labels, works, and more — plus Cover Art Archive images, and (optionally) lets you submit your own tags, ratings, and collection edits.
 
 > Developed and maintained by AI (Claude Code). Use at your own discretion.
