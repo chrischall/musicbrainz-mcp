@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.0...v0.2.1) (2026-06-13)
+
+
+### Documentation
+
+* add MIT LICENSE file and README badges ([#6](https://github.com/chrischall/musicbrainz-mcp/issues/6)) ([a374937](https://github.com/chrischall/musicbrainz-mcp/commit/a374937d792b1868a3565e3d0eb997d81bc7f296))
+* drop duplicated CI badge line ([#8](https://github.com/chrischall/musicbrainz-mcp/issues/8)) ([db2f114](https://github.com/chrischall/musicbrainz-mcp/commit/db2f114bc9e5553da5b2973142b119d4721da6f6))
+
 ## [0.2.0](https://github.com/chrischall/musicbrainz-mcp/compare/v0.1.0...v0.2.0) (2026-06-09)
 
 
