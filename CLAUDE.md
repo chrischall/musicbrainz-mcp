@@ -82,9 +82,12 @@ Tests live in `tests/` (vitest). No real network — `fetch` (in `client.test.ts
 
 Version lives in `src/version.ts` (`VERSION`, marked `// x-release-please-version`), mirrored into `package.json`, `manifest.json`, `server.json` (×2), and the two `.claude-plugin/*` manifests. **Don't hand-bump** — release-please owns it via `extra-files` in `release-please-config.json`. `versionSyncTest` fails the build if any marker drifts from `package.json`.
 
+<!-- pr-workflow:v2 -->
 ## Pull requests & release notes
 
 **Default workflow: branch + PR, even for solo work.** One release-notes label per PR. **Don't merge PRs yourself** — `pr-auto-review.yml` adds `ready-to-merge` on a `pass`; `auto-merge.yml` squash-merges once CI is green. Open a PR only when the change is COMPLETE in a single push (auto-merge ships it the moment review passes; later commits orphan). Need a checkpoint without shipping? Open it `--draft`.
+
+The **PR title MUST be a Conventional Commit**, written user-facing (`fix(scope): …`, `feat(scope): …`), not internal shorthand. Because the repo squash-merges, the PR title *becomes the squash commit's subject line* — the only thing release-please parses to pick the version bump and changelog section. Only `feat` (minor), `fix` (patch), and `!`/`BREAKING CHANGE` (major) cut a release; `perf`/`refactor`/`docs` show in the changelog without bumping; `ci`/`test`/`build`/`chore` are recognised but hidden (see `release-please-config.json` → `changelog-sections`). A title without a conventional type is invisible to release-please — no bump, no changelog line. Prefixes in *individual commits* don't help; squash keeps only the title.
 
 ## Gotchas
 
