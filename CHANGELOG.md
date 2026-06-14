@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.1...v0.2.2) (2026-06-14)
+
+
+### Documentation
+
+* require Conventional Commit PR titles for release-please ([#14](https://github.com/chrischall/musicbrainz-mcp/issues/14)) ([efb1740](https://github.com/chrischall/musicbrainz-mcp/commit/efb17404be8841dc228d71b706adf44f50b76d98))
+
 ## [0.2.1](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.0...v0.2.1) (2026-06-13)
 
 
