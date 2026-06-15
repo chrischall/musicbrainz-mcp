@@ -85,9 +85,22 @@ Version lives in `src/version.ts` (`VERSION`, marked `// x-release-please-versio
 <!-- pr-workflow:v2 -->
 ## Pull requests & release notes
 
-**Default workflow: branch + PR, even for solo work.** One release-notes label per PR. **Don't merge PRs yourself** — `pr-auto-review.yml` adds `ready-to-merge` on a `pass`; `auto-merge.yml` squash-merges once CI is green. Open a PR only when the change is COMPLETE in a single push (auto-merge ships it the moment review passes; later commits orphan). Need a checkpoint without shipping? Open it `--draft`.
+**Default workflow: branch + PR, even for solo work.** One release-notes label per PR. **Don't merge PRs yourself** — `pr-auto-review.yml` arms `ready-to-merge` on a `pass` *or* a `warn` (nits-only) verdict, while `warn`/`fail` also open an `auto-review-followup` issue; only `fail` blocks the merge. `auto-merge.yml` squash-merges once CI is green. Open a PR only when the change is COMPLETE in a single push (auto-merge ships it the moment review passes; later commits orphan). Need a checkpoint without shipping? Open it `--draft`.
 
 The **PR title MUST be a Conventional Commit**, written user-facing (`fix(scope): …`, `feat(scope): …`), not internal shorthand. Because the repo squash-merges, the PR title *becomes the squash commit's subject line* — the only thing release-please parses to pick the version bump and changelog section. Only `feat` (minor), `fix` (patch), and `!`/`BREAKING CHANGE` (major) cut a release; `perf`/`refactor`/`docs` show in the changelog without bumping; `ci`/`test`/`build`/`chore` are recognised but hidden (see `release-please-config.json` → `changelog-sections`). A title without a conventional type is invisible to release-please — no bump, no changelog line. Prefixes in *individual commits* don't help; squash keeps only the title.
+
+### Auto-review follow-up issues
+
+When a PR's auto-review verdict is `warn` or `fail`, the `chrischall/workflows` pipeline opens or updates a single `auto-review-followup` issue ("Auto-review follow-ups for PR #N") whose checklist captures every finding, and links it from the PR's `<!-- auto-review-verdict -->` comment (`📋 Tracking follow-ups: #N`). `warn` (nits only) still auto-merges — the issue carries the nits forward, so most nits are fixed in a *later* PR; `fail` blocks until the important findings are addressed on the PR itself.
+
+When asked to address the auto-review comments / review findings on a PR:
+
+1. Read the verdict comment, open the linked `auto-review-followup` issue, and treat its checklist as the work list (alongside any inline review comments).
+2. Resolve each item, checking off only what you've **verified** is genuinely fixed.
+3. If every item is resolved on the current PR, add `Closes #<issue>` to that PR's body so the merge closes it; if some are deferred, check off only the resolved ones and leave the issue open.
+4. For nits whose `warn` PR already auto-merged, address them in a follow-up PR that references `Closes #<issue>`.
+
+(Mirrors the fleet-wide convention in `~/.claude/CLAUDE.md`.)
 
 ## Gotchas
 
