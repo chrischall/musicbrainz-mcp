@@ -30,6 +30,10 @@ const MIN_INTERVAL_MS = 1100;
 const REQUEST_TIMEOUT_MS = 20_000;
 // Retry budget for a 503/429 (rate-limit) response after the throttle.
 const MAX_RATE_RETRIES = 2;
+// Ceiling on an honored `Retry-After` (mirroring viator's 30s cap). Because the
+// backoff sleeps *inside* the serialized throttle slot, an uncapped value (a CDN
+// can emit `Retry-After: 3600`) would park every queued call for that long.
+const MAX_RETRY_AFTER_MS = 30_000;
 // Every write must carry `client=<appname>-<version>` (MusicBrainz requirement).
 const CLIENT_PARAM = `musicbrainz-mcp-${VERSION}`;
 export const XML_CONTENT_TYPE = 'application/xml; charset=utf-8';
@@ -142,7 +146,7 @@ export class MusicBrainzClient {
         if ((res.status === 503 || res.status === 429) && attempt < MAX_RATE_RETRIES) {
           attempt += 1;
           const retryAfter = Number(res.headers.get('retry-after'));
-          await this.sleep(retryAfter > 0 ? retryAfter * 1000 : MIN_INTERVAL_MS);
+          await this.sleep(retryAfter > 0 ? Math.min(retryAfter * 1000, MAX_RETRY_AFTER_MS) : MIN_INTERVAL_MS);
           continue;
         }
         return res;
