@@ -10,9 +10,10 @@ import {
   RateLimitError,
   UnreachableError,
   createOAuth2Refresher,
+  createThrottle,
+  type Throttle,
 } from '@chrischall/mcp-utils';
 import { VERSION } from './version.js';
-import { createThrottle, type Throttle } from './throttle.js';
 
 // Load .env for local dev; silently skip if dotenv is unavailable (e.g. the
 // mcpb bundle). `loadDotenvSafely` swallows a missing dotenv module and never

@@ -26,8 +26,7 @@ All tools are prefixed `musicbrainz_` and use a generic **entity-enum** shape ra
 src/
   version.ts      # single source of truth for VERSION (x-release-please-version)
   index.ts        # MCP server entry — runMcp({ name, version, banner, tools })
-  throttle.ts     # serialized min-interval queue (≥1.1s spacing) — the 1 req/s limiter
-  client.ts       # MusicBrainzClient — reads (no auth), Cover Art Archive, OAuth + XML writes
+  client.ts       # MusicBrainzClient — reads (no auth), Cover Art Archive, OAuth + XML writes; throttled ≥1.1s
   entities.ts     # entity enums + MBID schema shared across tools
   xml.ts          # mmd-2.0 submission XML builders (tags / ratings)
   attribution.ts  # ATTRIBUTION_NOTE appended to data tool descriptions
@@ -47,7 +46,7 @@ Each tool file exports `register<Domain>Tools(server)` calling `server.registerT
 
 ## Rate limiting (the central constraint)
 
-MusicBrainz allows **at most 1 request/second** per source; exceeding it returns **HTTP 503** and can get the IP blocked. `throttle.ts` enforces this *proactively*: every upstream call (reads and writes) funnels through one serialized queue that spaces request *starts* ≥1.1s apart, so concurrent tool calls line up instead of bursting. `client.send` additionally retries a 503/429 up to twice (honoring `Retry-After`). Don't add a code path that hits MusicBrainz outside `client` — it would bypass the throttle.
+MusicBrainz allows **at most 1 request/second** per source; exceeding it returns **HTTP 503** and can get the IP blocked. `client.ts` enforces this *proactively* via `createThrottle` from `@chrischall/mcp-utils` (a serialized min-interval scheduler originally hoisted from this repo): every upstream call (reads and writes) funnels through one serialized queue that spaces request *starts* ≥1.1s apart, so concurrent tool calls line up instead of bursting. `client.send` additionally retries a 503/429 up to twice (honoring `Retry-After`). Don't add a code path that hits MusicBrainz outside `client` — it would bypass the throttle.
 
 ## Auth & client
 
@@ -76,7 +75,7 @@ Loaded via `dotenv` from `.env` next to `dist/` (guarded import; the mcpb bundle
 
 ## Testing
 
-Tests live in `tests/` (vitest). No real network — `fetch` (in `client.test.ts`) and `client.get`/`client.coverArt`/`client.write` (in tool tests) are mocked. `throttle.test.ts` uses an injected clock. `tests/server-boot.test.ts` spawns the real built artifacts (`dist/bundle.js` with no `node_modules`, and `dist/index.js`) and asserts the `initialize` + `tools/list` handshake.
+Tests live in `tests/` (vitest). No real network — `fetch` (in `client.test.ts`) and `client.get`/`client.coverArt`/`client.write` (in tool tests) are mocked. (The throttle itself is unit-tested upstream in `@chrischall/mcp-utils`.) `tests/server-boot.test.ts` spawns the real built artifacts (`dist/bundle.js` with no `node_modules`, and `dist/index.js`) and asserts the `initialize` + `tools/list` handshake.
 
 ## Versioning
 
