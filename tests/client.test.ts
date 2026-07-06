@@ -82,6 +82,32 @@ describe('MusicBrainzClient.get', () => {
     await expect(client.get('/release/x')).rejects.toThrow(/Rate limited by MusicBrainz/);
   });
 
+  it('caps a huge Retry-After so one 503 cannot stall the serialized throttle', async () => {
+    // A CDN can emit `Retry-After: 3600`. Honoring it verbatim would sleep an
+    // hour inside the throttle slot, parking every queued call. The delay must
+    // be clamped to MAX_RETRY_AFTER_MS (30s).
+    const { fetchImpl } = mockFetch([
+      {
+        match: '/ws/2/release',
+        responses: [jsonResponse(503, 'busy', { 'retry-after': '3600' }), jsonResponse(200, { ok: true })],
+      },
+    ]);
+    const slept: number[] = [];
+    const client = new MusicBrainzClient({
+      fetchImpl,
+      throttle: passThrough,
+      sleep: (ms) => {
+        slept.push(ms);
+        return Promise.resolve();
+      },
+      now: () => 0,
+      oauth: null,
+    });
+    const data = await client.get<{ ok: boolean }>('/release/x');
+    expect(data.ok).toBe(true);
+    expect(slept).toEqual([30_000]);
+  });
+
   it('throws a formatted error on a non-2xx', async () => {
     const { fetchImpl } = mockFetch([{ match: '/ws/2/artist', responses: [jsonResponse(404, 'Not Found')] }]);
     const client = makeClient(fetchImpl);
