@@ -10,7 +10,9 @@ import {
   RateLimitError,
   UnreachableError,
   createOAuth2Refresher,
+  createCachedTokenSource,
   createThrottle,
+  type CachedTokenSource,
   type Throttle,
 } from '@chrischall/mcp-utils';
 import { VERSION } from './version.js';
@@ -82,9 +84,10 @@ export class MusicBrainzClient {
   private readonly sleep: (ms: number) => Promise<void>;
 
   // OAuth (writes only). Reads are open, so there is no read-side config error.
-  private readonly refresh: (() => Promise<{ accessToken: string; expiresAt?: Date }>) | null;
+  // The cached-token source single-flights the refresh and re-mints ~1 min
+  // before expiry; it's null until OAuth is configured.
+  private readonly tokenSource: CachedTokenSource | null;
   private readonly oauthConfigError: McpToolError | null;
-  private cachedToken: { token: string; expiresAt: number } | null = null;
 
   constructor(opts: ClientOptions = {}) {
     this.ua = opts.userAgent ?? readEnvVar('MUSICBRAINZ_USER_AGENT') ?? defaultUserAgent();
@@ -95,16 +98,31 @@ export class MusicBrainzClient {
 
     const oauth = opts.oauth !== undefined ? opts.oauth : readOAuthFromEnv();
     if (oauth) {
-      this.refresh = createOAuth2Refresher({
+      const refresh = createOAuth2Refresher({
         endpoint: OAUTH_TOKEN_URL,
         refreshToken: oauth.refreshToken,
         params: { client_id: oauth.clientId, client_secret: oauth.clientSecret },
         retry: { count: 1, delayMs: 1000 },
         fetchImpl: this.fetchImpl,
       });
+      // Cache the minted access token, refreshing ~1 min before expiry so an
+      // in-flight write never races the deadline. `ttlMs` uses the refresher's
+      // `expiresIn` so the buffer is measured against the same injected clock;
+      // when the server omits `expires_in`, the source's 1 h default applies
+      // (matching the previous `now + 3_600_000` fallback).
+      this.tokenSource = createCachedTokenSource({
+        mint: async () => {
+          const r = await refresh();
+          return r.expiresIn !== undefined
+            ? { token: r.accessToken, ttlMs: r.expiresIn * 1000 }
+            : { token: r.accessToken };
+        },
+        bufferMs: 60_000,
+        now: this.now,
+      });
       this.oauthConfigError = null;
     } else {
-      this.refresh = null;
+      this.tokenSource = null;
       this.oauthConfigError = createHelpfulError(
         'MusicBrainz OAuth is not configured — the write tools (tags, ratings, collections) need credentials.',
         {
@@ -197,15 +215,7 @@ export class MusicBrainzClient {
 
   private async accessToken(): Promise<string> {
     if (this.oauthConfigError) throw this.oauthConfigError;
-    const now = this.now();
-    // Refresh ~1 min before expiry so an in-flight write never races the deadline.
-    if (this.cachedToken && this.cachedToken.expiresAt - 60_000 > now) return this.cachedToken.token;
-    const r = await this.refresh!();
-    this.cachedToken = {
-      token: r.accessToken,
-      expiresAt: r.expiresAt ? r.expiresAt.getTime() : now + 3_600_000,
-    };
-    return this.cachedToken.token;
+    return this.tokenSource!.getToken();
   }
 
   /**

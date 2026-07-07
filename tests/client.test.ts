@@ -170,6 +170,28 @@ describe('MusicBrainzClient writes', () => {
     expect(calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(1);
   });
 
+  it('re-mints the access token when within 60s of expiry', async () => {
+    // expires_in: 30 → ttl 30s; with the 60s buffer the cached token is always
+    // considered near-expiry, so every write re-mints (single-flight per call).
+    const { fetchImpl, calls } = mockFetch([
+      {
+        match: 'oauth2/token',
+        responses: [
+          jsonResponse(200, { access_token: 'AT-1', expires_in: 30 }),
+          jsonResponse(200, { access_token: 'AT-2', expires_in: 30 }),
+        ],
+      },
+      { match: '/ws/2/rating', responses: [jsonResponse(200, ''), jsonResponse(200, '')] },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
+    await client.write('POST', '/rating', { xmlBody: '<a/>' });
+    await client.write('POST', '/rating', { xmlBody: '<b/>' });
+    expect(calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(2);
+    const writes = calls.filter((c) => c.url.includes('/ws/2/rating'));
+    expect(writes[0]!.headers['Authorization']).toBe('Bearer AT-1');
+    expect(writes[1]!.headers['Authorization']).toBe('Bearer AT-2');
+  });
+
   it('PUT/DELETE send no body and no content-type (collections)', async () => {
     const { fetchImpl, calls } = mockFetch([
       { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
