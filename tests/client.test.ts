@@ -192,6 +192,46 @@ describe('MusicBrainzClient writes', () => {
     expect(writes[1]!.headers['Authorization']).toBe('Bearer AT-2');
   });
 
+  it('falls back to the 1h default TTL when the token response omits expires_in', async () => {
+    // When MusicBrainz answers the refresh without `expires_in`, the mint returns
+    // `{ token }` with no `ttlMs`, so createCachedTokenSource applies its 1h
+    // default TTL. With the 60s buffer the cached token is reused for anything
+    // under T+3_540_000ms and re-minted at/after that boundary. Guards the
+    // implicit fallback against future upstream default-TTL changes.
+    const { fetchImpl, calls } = mockFetch([
+      {
+        match: 'oauth2/token',
+        responses: [
+          jsonResponse(200, { access_token: 'AT-1' }), // no expires_in → default TTL
+          jsonResponse(200, { access_token: 'AT-2' }),
+        ],
+      },
+      { match: '/ws/2/rating', responses: [jsonResponse(200, ''), jsonResponse(200, ''), jsonResponse(200, '')] },
+    ]);
+    let clock = 0;
+    const client = new MusicBrainzClient({
+      fetchImpl,
+      throttle: passThrough,
+      sleep: noSleep,
+      now: () => clock,
+      oauth: { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' },
+    });
+
+    // Mint at t=0.
+    await client.write('POST', '/rating', { xmlBody: '<a/>' });
+    // Just inside the default-TTL freshness window (T + 3_600_000 - 60_000): reused.
+    clock = 3_539_999;
+    await client.write('POST', '/rating', { xmlBody: '<b/>' });
+    expect(calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(1);
+    // At the boundary the buffered token is stale, so the next write re-mints.
+    clock = 3_540_000;
+    await client.write('POST', '/rating', { xmlBody: '<c/>' });
+    expect(calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(2);
+
+    const writes = calls.filter((c) => c.url.includes('/ws/2/rating'));
+    expect(writes.map((w) => w.headers['Authorization'])).toEqual(['Bearer AT-1', 'Bearer AT-1', 'Bearer AT-2']);
+  });
+
   it('PUT/DELETE send no body and no content-type (collections)', async () => {
     const { fetchImpl, calls } = mockFetch([
       { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
