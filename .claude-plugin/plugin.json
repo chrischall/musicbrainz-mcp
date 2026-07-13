@@ -1,7 +1,7 @@
 {
   "name": "musicbrainz-mcp",
   "displayName": "MusicBrainz",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "MCP server for MusicBrainz — search/browse music metadata, cover art, and submit tags, ratings, and collections",
   "author": {
     "name": "Chris Hall",

@@ -3,7 +3,7 @@
   "manifest_version": "0.3",
   "name": "musicbrainz-mcp",
   "display_name": "MusicBrainz",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Search and browse the MusicBrainz music encyclopedia, fetch cover art, and submit your own tags, ratings, and collections",
   "author": {
     "name": "Chris Chall",
