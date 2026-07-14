@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.4](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.3...v0.2.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **plugin:** move SKILL.md into skills/ directory so plugin skills load ([#32](https://github.com/chrischall/musicbrainz-mcp/issues/32)) ([4c847da](https://github.com/chrischall/musicbrainz-mcp/commit/4c847da05195ad5257b58f3db881628bd09ec21b))
+* **plugin:** stage root SKILL.md for mcp-publish and ignore it in mcpb pack ([#34](https://github.com/chrischall/musicbrainz-mcp/issues/34)) ([806bb9e](https://github.com/chrischall/musicbrainz-mcp/commit/806bb9ea5bd84c694cdaac5cb7f1b37d5c3490df))
+
 ## [0.2.3](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.2...v0.2.3) (2026-07-07)
 
 
