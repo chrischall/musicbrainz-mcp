@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "MCP server for MusicBrainz — music metadata, cover art, and your own tags, ratings, and collections",
-    "version": "0.2.4"
+    "version": "0.2.5"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "displayName": "MusicBrainz",
       "source": "./",
       "description": "MCP server for MusicBrainz — search/browse music metadata, fetch cover art, and submit tags, ratings, and collections",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "author": {
         "name": "Chris Hall"
       },

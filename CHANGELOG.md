@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.4...v0.2.5) (2026-07-19)
+
+
+### Documentation
+
+* replace duplicated fleet policy with a pointer ([#38](https://github.com/chrischall/musicbrainz-mcp/issues/38)) ([16519d9](https://github.com/chrischall/musicbrainz-mcp/commit/16519d9b897686a18554526619303d7c2b598629))
+
 ## [0.2.4](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.3...v0.2.4) (2026-07-13)
 
 
