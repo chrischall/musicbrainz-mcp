@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.5...v0.2.6) (2026-08-27)
+
+
+### Documentation
+
+* npm test now typechecks before running vitest ([#61](https://github.com/chrischall/musicbrainz-mcp/issues/61)) ([6aaf2d5](https://github.com/chrischall/musicbrainz-mcp/commit/6aaf2d5c70aef1f5f21ce7159a26926d8d35da8e))
+
 ## [0.2.5](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.4...v0.2.5) (2026-07-19)
 
 
