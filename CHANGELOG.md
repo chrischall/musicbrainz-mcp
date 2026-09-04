@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.6...v0.3.0) (2026-09-04)
+
+
+### Features
+
+* **tools:** compact by default — strip media URLs, and minify every response ([#74](https://github.com/chrischall/musicbrainz-mcp/issues/74)) ([00c0604](https://github.com/chrischall/musicbrainz-mcp/commit/00c06047330e190f59937940a205eadebe0a7b69))
+
+
+### Bug Fixes
+
+* **deps:** pick up @chrischall/mcp-utils 0.23.2 ([#79](https://github.com/chrischall/musicbrainz-mcp/issues/79)) ([5bbd1fc](https://github.com/chrischall/musicbrainz-mcp/commit/5bbd1fc3da14a13a649d6802642d52837ba76418))
+
 ## [0.2.6](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.5...v0.2.6) (2026-08-27)
 
 
