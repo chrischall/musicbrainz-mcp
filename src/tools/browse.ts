@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { CoreEntitySchema, MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -41,6 +42,7 @@ export function registerBrowseTools(server: McpServer): void {
         openWorld: true,
       }),
       inputSchema: {
+        view: viewArg(),
         entity: CoreEntitySchema.describe('Result entity type to list'),
         linkedBy: z.enum(LINK_ENTITIES).describe('The relationship to browse by (the linking entity type)'),
         mbid: MbidSchema.describe('MBID of the linking entity'),
@@ -49,7 +51,7 @@ export function registerBrowseTools(server: McpServer): void {
         offset: z.number().int().min(0).optional().describe('Result offset for paging (default 0)'),
       },
     },
-    async ({ entity, linkedBy, mbid, inc, limit, offset }) => {
+    async ({ entity, linkedBy, mbid, inc, limit, offset, view }) => {
       const query: Record<string, string | number | undefined> = {
         [linkedBy]: mbid,
         limit,
@@ -57,7 +59,7 @@ export function registerBrowseTools(server: McpServer): void {
       };
       if (inc && inc.length > 0) query.inc = inc.join('+');
       const data = await client.get(`/${entity}`, query);
-      return textResult(data);
+      return viewResponse(view, data);
     },
   );
 }

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { SearchableEntitySchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -23,15 +24,16 @@ export function registerSearchTools(server: McpServer): void {
         openWorld: true,
       }),
       inputSchema: {
+        view: viewArg(),
         entity: SearchableEntitySchema.describe('Entity type to search'),
         query: z.string().min(1).describe('Lucene query string (plain text or fielded)'),
         limit: z.number().int().min(1).max(100).optional().describe('Max results (1–100, default 25)'),
         offset: z.number().int().min(0).optional().describe('Result offset for paging (default 0)'),
       },
     },
-    async ({ entity, query, limit, offset }) => {
+    async ({ entity, query, limit, offset, view }) => {
       const data = await client.get(`/${entity}`, { query, limit, offset });
-      return textResult(data);
+      return viewResponse(view, data);
     },
   );
 }

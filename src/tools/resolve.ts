@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, createHelpfulError } from '@chrischall/mcp-utils';
+import { createHelpfulError, minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { CORE_ENTITIES } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -47,7 +47,7 @@ export function registerResolveTools(server: McpServer): void {
       }
       const query = inc && inc.length > 0 ? { inc: inc.join('+') } : {};
       const data = await client.get(`/${parsed.entity}/${parsed.mbid}`, query);
-      return textResult({ entity: parsed.entity, mbid: parsed.mbid, data });
+      return minifiedResult({ entity: parsed.entity, mbid: parsed.mbid, data });
     },
   );
 }

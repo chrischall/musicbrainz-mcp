@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, schemaConfirm } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { AnnotatableEntitySchema, MbidSchema } from '../entities.js';
 import { buildTagsXml, type TagVote } from '../xml.js';
@@ -34,7 +34,7 @@ export function registerTagTools(server: McpServer): void {
       const v: TagVote = vote ?? 'upvote';
       const xml = buildTagsXml(entity, mbid, tags, v);
       if (confirm !== true) {
-        return textResult({
+        return minifiedResult({
           dryRun: true,
           action: 'submit_tags',
           entity,
@@ -46,7 +46,7 @@ export function registerTagTools(server: McpServer): void {
         });
       }
       const response = await client.write('POST', '/tag', { xmlBody: xml });
-      return textResult({
+      return minifiedResult({
         submitted: true,
         entity,
         mbid,

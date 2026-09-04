@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { CoreEntitySchema, MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -22,6 +23,7 @@ export function registerLookupTools(server: McpServer): void {
         openWorld: true,
       }),
       inputSchema: {
+        view: viewArg(),
         entity: CoreEntitySchema.describe('Entity type to look up'),
         mbid: MbidSchema.describe('The entity MBID (UUID)'),
         inc: z
@@ -30,10 +32,10 @@ export function registerLookupTools(server: McpServer): void {
           .describe('Subqueries/relationships to include, e.g. ["releases","url-rels","tags"]'),
       },
     },
-    async ({ entity, mbid, inc }) => {
+    async ({ entity, mbid, inc, view }) => {
       const query = inc && inc.length > 0 ? { inc: inc.join('+') } : {};
       const data = await client.get(`/${entity}/${encodeURIComponent(mbid)}`, query);
-      return textResult(data);
+      return viewResponse(view, data);
     },
   );
 }

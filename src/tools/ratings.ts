@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, schemaConfirm } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { AnnotatableEntitySchema, MbidSchema } from '../entities.js';
 import { buildRatingXml } from '../xml.js';
@@ -32,7 +32,7 @@ export function registerRatingTools(server: McpServer): void {
     async ({ entity, mbid, rating, confirm }) => {
       const xml = buildRatingXml(entity, mbid, rating);
       if (confirm !== true) {
-        return textResult({
+        return minifiedResult({
           dryRun: true,
           action: 'submit_rating',
           entity,
@@ -46,7 +46,7 @@ export function registerRatingTools(server: McpServer): void {
         });
       }
       const response = await client.write('POST', '/rating', { xmlBody: xml });
-      return textResult({
+      return minifiedResult({
         submitted: true,
         entity,
         mbid,
