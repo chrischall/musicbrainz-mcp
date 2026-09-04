@@ -31,6 +31,12 @@ An MCP server for [MusicBrainz](https://musicbrainz.org), the open music encyclo
 
 Each write makes **no** network call without `confirm: true`; it returns a dry-run preview first.
 
+Every read above takes a `view`, except `musicbrainz_cover_art`. It defaults to
+`compact`, which strips image and avatar URLs — a subtractive rule, so it cannot
+drop a field nobody knew was there; `view: "full"` returns MusicBrainz's payload
+untouched. `musicbrainz_cover_art` takes none on purpose: the image URLs *are*
+its answer, and stripping them would not shrink the response, it would empty it.
+
 ## Install
 
 This is a Node MCP server (stdio). Point your MCP host at it:

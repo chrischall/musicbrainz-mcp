@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { toolAnnotations } from '@chrischall/mcp-utils';
 import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { SearchableEntitySchema } from '../entities.js';
