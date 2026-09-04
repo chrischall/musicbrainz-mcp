@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, messageOf } from '@chrischall/mcp-utils';
+import { messageOf, minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 
 // A stable, always-present special-purpose entity ("Various Artists") — looking
@@ -26,7 +26,7 @@ export function registerUtilityTools(server: McpServer): void {
       const oauthConfigured = client.oauthConfigured;
       try {
         await client.get(`/artist/${VARIOUS_ARTISTS_MBID}`);
-        return textResult({
+        return minifiedResult({
           ok: true,
           reachable: true,
           oauth_configured: oauthConfigured,
@@ -35,7 +35,7 @@ export function registerUtilityTools(server: McpServer): void {
             : 'MusicBrainz is reachable. Read tools work; the write tools (tags, ratings, collections) need OAuth — set MUSICBRAINZ_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN.',
         });
       } catch (e) {
-        return textResult({
+        return minifiedResult({
           ok: false,
           reachable: false,
           oauth_configured: oauthConfigured,

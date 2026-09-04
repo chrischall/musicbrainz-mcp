@@ -96,6 +96,52 @@ describe('read tools', () => {
     expect(body.mbid).toBe(ARTIST_MBID);
   });
 
+  // musicbrainz_resolve IS musicbrainz_lookup with the MBID parsed out of a
+  // URL, so it has to answer in the same rung. It shipped bypassing the
+  // rollout: the same entity returned stripped through one route and untouched
+  // through the other, which makes the response shape depend on how the caller
+  // happened to arrive rather than on what they asked for.
+  it('resolve strips media by default, like its sibling reads', async () => {
+    get.mockResolvedValueOnce({
+      name: 'Radiohead',
+      image: 'https://commons.wikimedia.org/radiohead.jpg',
+    });
+    const r = await harness.callTool('musicbrainz_resolve', {
+      url: `https://musicbrainz.org/artist/${ARTIST_MBID}`,
+    });
+    const body = parse(r as never) as { data: Record<string, unknown> };
+    expect(body.data.image).toBeUndefined();
+    expect(body.data.name).toBe('Radiohead');
+  });
+
+  it('resolve returns the untouched payload on view:"full"', async () => {
+    get.mockResolvedValueOnce({
+      name: 'Radiohead',
+      image: 'https://commons.wikimedia.org/radiohead.jpg',
+    });
+    const r = await harness.callTool('musicbrainz_resolve', {
+      url: `https://musicbrainz.org/artist/${ARTIST_MBID}`,
+      view: 'full',
+    });
+    const body = parse(r as never) as { data: Record<string, unknown> };
+    expect(body.data.image).toBe('https://commons.wikimedia.org/radiohead.jpg');
+  });
+
+  // `view` is this server's vocabulary, not MusicBrainz's. The only query that
+  // may go upstream is the `inc` the handler builds; forwarding the whole input
+  // would send `view=full` to an API that never defined it — a bug two sibling
+  // repos shipped, and one the response cannot reveal, since it looks the same
+  // either way. Asserting on the call args is the only place it shows.
+  it('resolve never forwards view to MusicBrainz', async () => {
+    get.mockResolvedValueOnce({ name: 'Radiohead' });
+    await harness.callTool('musicbrainz_resolve', {
+      url: `https://musicbrainz.org/artist/${ARTIST_MBID}`,
+      view: 'full',
+      inc: ['releases'],
+    });
+    expect(get).toHaveBeenCalledWith(`/artist/${ARTIST_MBID}`, { inc: 'releases' });
+  });
+
   it('resolve errors on an unparseable input', async () => {
     const r = await harness.callTool('musicbrainz_resolve', { url: 'https://example.com/foo' });
     expect((r as { isError?: boolean }).isError).toBe(true);

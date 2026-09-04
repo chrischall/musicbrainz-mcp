@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
 
+// NO `view` on this tool, deliberately. Its product IS the image URLs: compact
+// strips `images`/`thumbnails`, which here does not shrink the response, it
+// EMPTIES it. Same rule as alltrails' photo tools, sw_get_receipt and redfin's
+// photo bundles — see @chrischall/mcp-utils' `stripMediaUrls` docs.
 export function registerCoverArtTools(server: McpServer): void {
   server.registerTool(
     'musicbrainz_cover_art',
@@ -28,7 +32,7 @@ export function registerCoverArtTools(server: McpServer): void {
     },
     async ({ entity, mbid }) => {
       const data = await client.coverArt(entity, mbid);
-      return textResult(data);
+      return minifiedResult(data);
     },
   );
 }

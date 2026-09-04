@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, schemaConfirm } from '@chrischall/mcp-utils';
+import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { CollectableEntityTypeSchema, MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -34,7 +34,7 @@ export function registerCollectionTools(server: McpServer): void {
       const method = action === 'add' ? 'PUT' : 'DELETE';
       const path = `/collection/${collection}/${entityType}/${mbids.join(';')}`;
       if (confirm !== true) {
-        return textResult({
+        return minifiedResult({
           dryRun: true,
           action: `${action}_collection`,
           method,
@@ -45,7 +45,7 @@ export function registerCollectionTools(server: McpServer): void {
         });
       }
       const response = await client.write(method, path);
-      return textResult({
+      return minifiedResult({
         submitted: true,
         action,
         collection,

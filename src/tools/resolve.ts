@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, createHelpfulError } from '@chrischall/mcp-utils';
+import { createHelpfulError, toolAnnotations } from '@chrischall/mcp-utils';
+import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { CORE_ENTITIES } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -36,9 +37,13 @@ export function registerResolveTools(server: McpServer): void {
       inputSchema: {
         url: z.string().min(1).describe('A musicbrainz.org entity URL or an "entity/mbid" path'),
         inc: z.array(z.string()).optional().describe('Subqueries to include on the resolved entity'),
+        view: viewArg(),
       },
     },
-    async ({ url, inc }) => {
+    // `view` is destructured off and never reaches `client.get`: the only query
+    // MusicBrainz is sent is the `inc` built below, and a stray `view=compact`
+    // would go upstream as a parameter the API never defined.
+    async ({ url, inc, view }) => {
       const parsed = parseMusicBrainzUrl(url);
       if (!parsed) {
         throw createHelpfulError(`Could not find a MusicBrainz entity URL in "${url}".`, {
@@ -47,7 +52,11 @@ export function registerResolveTools(server: McpServer): void {
       }
       const query = inc && inc.length > 0 ? { inc: inc.join('+') } : {};
       const data = await client.get(`/${parsed.entity}/${parsed.mbid}`, query);
-      return textResult({ entity: parsed.entity, mbid: parsed.mbid, data });
+      // Same rung as its sibling reads. `data` is the lookup payload verbatim —
+      // this tool IS musicbrainz_lookup with the MBID parsed out of a URL, so
+      // answering it in a different rung would make the response shape depend
+      // on which of two identical routes the caller happened to take.
+      return viewResponse(view, { entity: parsed.entity, mbid: parsed.mbid, data });
     },
   );
 }
