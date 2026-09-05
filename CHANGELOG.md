@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/chrischall/musicbrainz-mcp/compare/v0.3.0...v0.3.1) (2026-09-04)
+
+
+### Documentation
+
+* **skill:** document the view response-shape parameter ([#80](https://github.com/chrischall/musicbrainz-mcp/issues/80)) ([86a4291](https://github.com/chrischall/musicbrainz-mcp/commit/86a4291e15220f9ca095d42f8c11346423b01bbf))
+
 ## [0.3.0](https://github.com/chrischall/musicbrainz-mcp/compare/v0.2.6...v0.3.0) (2026-09-04)
 
 
