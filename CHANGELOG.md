@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.2](https://github.com/chrischall/musicbrainz-mcp/compare/v0.3.1...v0.3.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** @chrischall/mcp-utils 0.26.1 ([#89](https://github.com/chrischall/musicbrainz-mcp/issues/89)) ([1fb6f88](https://github.com/chrischall/musicbrainz-mcp/commit/1fb6f8870b06eff67ba3e4e8dc7d8a26b5b74b19))
+* **deps:** Bump hono from 4.13.0 to 4.13.7 ([#87](https://github.com/chrischall/musicbrainz-mcp/issues/87)) ([457ebf0](https://github.com/chrischall/musicbrainz-mcp/commit/457ebf085aacbdba51c5cb7dcfec9b3774928a98))
+* **deps:** declare the peer floors mcp-utils 0.26.1 requires ([#90](https://github.com/chrischall/musicbrainz-mcp/issues/90)) ([cb8bc16](https://github.com/chrischall/musicbrainz-mcp/commit/cb8bc16f0654518e748089979919c27578a46fce))
+
 ## [0.3.1](https://github.com/chrischall/musicbrainz-mcp/compare/v0.3.0...v0.3.1) (2026-09-04)
 
 
