@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { toolAnnotations } from '@chrischall/mcp-utils';
 import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
@@ -41,15 +41,31 @@ export function registerBrowseTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         view: viewArg(),
         entity: CoreEntitySchema.describe('Result entity type to list'),
-        linkedBy: z.enum(LINK_ENTITIES).describe('The relationship to browse by (the linking entity type)'),
+        linkedBy: z
+          .enum(LINK_ENTITIES)
+          .describe('The relationship to browse by (the linking entity type)'),
         mbid: MbidSchema.describe('MBID of the linking entity'),
-        inc: z.array(z.string()).optional().describe('Subqueries to include, e.g. ["labels","recordings"]'),
-        limit: z.number().int().min(1).max(100).optional().describe('Max results (1–100, default 25)'),
-        offset: z.number().int().min(0).optional().describe('Result offset for paging (default 0)'),
-      },
+        inc: z
+          .array(z.string())
+          .optional()
+          .describe('Subqueries to include, e.g. ["labels","recordings"]'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Max results (1–100, default 25)'),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe('Result offset for paging (default 0)'),
+      }),
     },
     async ({ entity, linkedBy, mbid, inc, limit, offset, view }) => {
       const query: Record<string, string | number | undefined> = {
@@ -60,6 +76,6 @@ export function registerBrowseTools(server: McpServer): void {
       if (inc && inc.length > 0) query.inc = inc.join('+');
       const data = await client.get(`/${entity}`, query);
       return viewResponse(view, data);
-    },
+    }
   );
 }

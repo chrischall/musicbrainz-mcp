@@ -48,5 +48,18 @@ describe('tool registry', () => {
 
     expect(allNames).toEqual(expected);
     expect(tools).toHaveLength(9);
+
+    const protocolTools = (await harness.client.listTools()).tools;
+    const lookup = protocolTools.find(
+      (tool) => tool.name === 'musicbrainz_lookup'
+    );
+    expect(lookup?.inputSchema).toMatchObject({
+      type: 'object',
+      required: expect.arrayContaining(['entity', 'mbid']),
+      properties: {
+        entity: expect.objectContaining({ type: 'string' }),
+        mbid: expect.objectContaining({ type: 'string' }),
+      },
+    });
   });
 });

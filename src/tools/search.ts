@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { toolAnnotations } from '@chrischall/mcp-utils';
 import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
@@ -23,17 +23,31 @@ export function registerSearchTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         view: viewArg(),
         entity: SearchableEntitySchema.describe('Entity type to search'),
-        query: z.string().min(1).describe('Lucene query string (plain text or fielded)'),
-        limit: z.number().int().min(1).max(100).optional().describe('Max results (1–100, default 25)'),
-        offset: z.number().int().min(0).optional().describe('Result offset for paging (default 0)'),
-      },
+        query: z
+          .string()
+          .min(1)
+          .describe('Lucene query string (plain text or fielded)'),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('Max results (1–100, default 25)'),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe('Result offset for paging (default 0)'),
+      }),
     },
     async ({ entity, query, limit, offset, view }) => {
       const data = await client.get(`/${entity}`, { query, limit, offset });
       return viewResponse(view, data);
-    },
+    }
   );
 }

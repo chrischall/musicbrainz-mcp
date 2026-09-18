@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { createHelpfulError, toolAnnotations } from '@chrischall/mcp-utils';
 import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
@@ -9,10 +9,15 @@ import { ATTRIBUTION_NOTE } from '../attribution.js';
 const ENTITY_ALT = CORE_ENTITIES.join('|');
 // Match a musicbrainz.org entity URL (or a bare "entity/mbid" path) and capture
 // the entity type + MBID.
-const URL_RE = new RegExp(`(?:^|/)(${ENTITY_ALT})/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`, 'i');
+const URL_RE = new RegExp(
+  `(?:^|/)(${ENTITY_ALT})/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`,
+  'i'
+);
 
 /** Parse a MusicBrainz entity URL/path into its entity type and MBID. */
-export function parseMusicBrainzUrl(input: string): { entity: string; mbid: string } | null {
+export function parseMusicBrainzUrl(
+  input: string
+): { entity: string; mbid: string } | null {
   const m = URL_RE.exec(input.trim());
   if (!m) return null;
   return { entity: m[1].toLowerCase(), mbid: m[2].toLowerCase() };
@@ -34,11 +39,17 @@ export function registerResolveTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
-        url: z.string().min(1).describe('A musicbrainz.org entity URL or an "entity/mbid" path'),
-        inc: z.array(z.string()).optional().describe('Subqueries to include on the resolved entity'),
+      inputSchema: z.object({
+        url: z
+          .string()
+          .min(1)
+          .describe('A musicbrainz.org entity URL or an "entity/mbid" path'),
+        inc: z
+          .array(z.string())
+          .optional()
+          .describe('Subqueries to include on the resolved entity'),
         view: viewArg(),
-      },
+      }),
     },
     // `view` is destructured off and never reaches `client.get`: the only query
     // MusicBrainz is sent is the `inc` built below, and a stray `view=compact`
@@ -46,9 +57,14 @@ export function registerResolveTools(server: McpServer): void {
     async ({ url, inc, view }) => {
       const parsed = parseMusicBrainzUrl(url);
       if (!parsed) {
-        throw createHelpfulError(`Could not find a MusicBrainz entity URL in "${url}".`, {
-          hint: 'Expected something like https://musicbrainz.org/artist/<mbid> with one of: ' + CORE_ENTITIES.join(', '),
-        });
+        throw createHelpfulError(
+          `Could not find a MusicBrainz entity URL in "${url}".`,
+          {
+            hint:
+              'Expected something like https://musicbrainz.org/artist/<mbid> with one of: ' +
+              CORE_ENTITIES.join(', '),
+          }
+        );
       }
       const query = inc && inc.length > 0 ? { inc: inc.join('+') } : {};
       const data = await client.get(`/${parsed.entity}/${parsed.mbid}`, query);
@@ -56,7 +72,11 @@ export function registerResolveTools(server: McpServer): void {
       // this tool IS musicbrainz_lookup with the MBID parsed out of a URL, so
       // answering it in a different rung would make the response shape depend
       // on which of two identical routes the caller happened to take.
-      return viewResponse(view, { entity: parsed.entity, mbid: parsed.mbid, data });
-    },
+      return viewResponse(view, {
+        entity: parsed.entity,
+        mbid: parsed.mbid,
+        data,
+      });
+    }
   );
 }

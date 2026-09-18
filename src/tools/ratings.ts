@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
+import type { McpServer } from '@modelcontextprotocol/server';
+import {
+  minifiedResult,
+  schemaConfirm,
+  toolAnnotations,
+} from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { AnnotatableEntitySchema, MbidSchema } from '../entities.js';
 import { buildRatingXml } from '../xml.js';
@@ -22,12 +26,17 @@ export function registerRatingTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         entity: AnnotatableEntitySchema.describe('Entity type to rate'),
         mbid: MbidSchema.describe('MBID of the entity to rate'),
-        rating: z.number().int().min(0).max(100).describe('Rating 0–100 (0 removes; 20/40/60/80/100 = 1–5 stars)'),
+        rating: z
+          .number()
+          .int()
+          .min(0)
+          .max(100)
+          .describe('Rating 0–100 (0 removes; 20/40/60/80/100 = 1–5 stars)'),
         confirm: schemaConfirm,
-      },
+      }),
     },
     async ({ entity, mbid, rating, confirm }) => {
       const xml = buildRatingXml(entity, mbid, rating);
@@ -52,8 +61,11 @@ export function registerRatingTools(server: McpServer): void {
         mbid,
         rating,
         response: response || 'OK',
-        note: rating === 0 ? 'Rating removed from your MusicBrainz account.' : 'Rating submitted to your MusicBrainz account.',
+        note:
+          rating === 0
+            ? 'Rating removed from your MusicBrainz account.'
+            : 'Rating submitted to your MusicBrainz account.',
       });
-    },
+    }
   );
 }

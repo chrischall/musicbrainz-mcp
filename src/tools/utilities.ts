@@ -1,6 +1,11 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { messageOf, minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
+import type { McpServer } from '@modelcontextprotocol/server';
+import {
+  messageOf,
+  minifiedResult,
+  toolAnnotations,
+} from '@chrischall/mcp-utils';
 import { client } from '../client.js';
+import { z } from 'zod';
 
 // A stable, always-present special-purpose entity ("Various Artists") — looking
 // it up proves connectivity and that our User-Agent is accepted, with no auth.
@@ -20,7 +25,7 @@ export function registerUtilityTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {},
+      inputSchema: z.object({}),
     },
     async () => {
       const oauthConfigured = client.oauthConfigured;
@@ -43,6 +48,6 @@ export function registerUtilityTools(server: McpServer): void {
           hint: 'The MusicBrainz API call failed — it may be rate-limited (max 1 req/s) or temporarily unavailable. Retry shortly.',
         });
       }
-    },
+    }
   );
 }

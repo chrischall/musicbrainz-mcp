@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { MbidSchema } from '../entities.js';
@@ -25,14 +25,16 @@ export function registerCoverArtTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
-        entity: z.enum(['release', 'release-group']).describe('Which MBID type the cover art is keyed on'),
+      inputSchema: z.object({
+        entity: z
+          .enum(['release', 'release-group'])
+          .describe('Which MBID type the cover art is keyed on'),
         mbid: MbidSchema.describe('Release or release-group MBID'),
-      },
+      }),
     },
     async ({ entity, mbid }) => {
       const data = await client.coverArt(entity, mbid);
       return minifiedResult(data);
-    },
+    }
   );
 }

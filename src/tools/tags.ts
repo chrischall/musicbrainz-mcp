@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
+import type { McpServer } from '@modelcontextprotocol/server';
+import {
+  minifiedResult,
+  schemaConfirm,
+  toolAnnotations,
+} from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { AnnotatableEntitySchema, MbidSchema } from '../entities.js';
 import { buildTagsXml, type TagVote } from '../xml.js';
@@ -22,13 +26,20 @@ export function registerTagTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         entity: AnnotatableEntitySchema.describe('Entity type to tag'),
         mbid: MbidSchema.describe('MBID of the entity to tag'),
-        tags: z.array(z.string().min(1)).min(1).max(50).describe('Tag names to apply'),
-        vote: z.enum(['upvote', 'downvote', 'withdraw']).optional().describe('Vote direction (default upvote)'),
+        tags: z
+          .array(z.string().min(1))
+          .min(1)
+          .max(50)
+          .describe('Tag names to apply'),
+        vote: z
+          .enum(['upvote', 'downvote', 'withdraw'])
+          .optional()
+          .describe('Vote direction (default upvote)'),
         confirm: schemaConfirm,
-      },
+      }),
     },
     async ({ entity, mbid, tags, vote, confirm }) => {
       const v: TagVote = vote ?? 'upvote';
@@ -55,6 +66,6 @@ export function registerTagTools(server: McpServer): void {
         response: response || 'OK',
         note: 'Tags submitted to your MusicBrainz account.',
       });
-    },
+    }
   );
 }
