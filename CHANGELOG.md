@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0](https://github.com/chrischall/musicbrainz-mcp/compare/v0.3.2...v1.0.0) (2026-09-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** migrate server to SDK v2 ([#95](https://github.com/chrischall/musicbrainz-mcp/issues/95))
+
+### Features
+
+* **mcp:** migrate server to SDK v2 ([#95](https://github.com/chrischall/musicbrainz-mcp/issues/95)) ([1cefd73](https://github.com/chrischall/musicbrainz-mcp/commit/1cefd7381b33a3c77487883c79d3d5ddb9b9fce6))
+
+
+### Bug Fixes
+
+* **deps:** Bump the production-dependencies group with 2 updates ([#93](https://github.com/chrischall/musicbrainz-mcp/issues/93)) ([b27de08](https://github.com/chrischall/musicbrainz-mcp/commit/b27de08747d962dcb1fbb7f87c7f8bdb533bac5a))
+
 ## [0.3.2](https://github.com/chrischall/musicbrainz-mcp/compare/v0.3.1...v0.3.2) (2026-09-10)
 
 
