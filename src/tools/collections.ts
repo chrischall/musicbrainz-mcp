@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { minifiedResult, schemaConfirm, toolAnnotations } from '@chrischall/mcp-utils';
+import type { McpServer } from '@modelcontextprotocol/server';
+import {
+  minifiedResult,
+  schemaConfirm,
+  toolAnnotations,
+} from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { CollectableEntityTypeSchema, MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
@@ -22,13 +26,21 @@ export function registerCollectionTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
-        action: z.enum(['add', 'remove']).describe('Whether to add to or remove from the collection'),
+      inputSchema: z.object({
+        action: z
+          .enum(['add', 'remove'])
+          .describe('Whether to add to or remove from the collection'),
         collection: MbidSchema.describe('MBID of the target collection'),
-        entityType: CollectableEntityTypeSchema.describe('Plural entity type the collection holds (e.g. "releases")'),
-        mbids: z.array(MbidSchema).min(1).max(100).describe('MBIDs of the entities to add/remove'),
+        entityType: CollectableEntityTypeSchema.describe(
+          'Plural entity type the collection holds (e.g. "releases")'
+        ),
+        mbids: z
+          .array(MbidSchema)
+          .min(1)
+          .max(100)
+          .describe('MBIDs of the entities to add/remove'),
         confirm: schemaConfirm,
-      },
+      }),
     },
     async ({ action, collection, entityType, mbids, confirm }) => {
       const method = action === 'add' ? 'PUT' : 'DELETE';
@@ -54,6 +66,6 @@ export function registerCollectionTools(server: McpServer): void {
         response: response || 'OK',
         note: `${mbids.length} ${entityType} ${action === 'add' ? 'added to' : 'removed from'} your MusicBrainz collection.`,
       });
-    },
+    }
   );
 }
