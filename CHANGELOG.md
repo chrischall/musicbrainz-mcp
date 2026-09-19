@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/chrischall/musicbrainz-mcp/compare/v1.0.0...v1.1.0) (2026-09-19)
+
+
+### Features
+
+* **deps:** take mcp-utils 1.0.0 so this server boots via serveStdio ([#98](https://github.com/chrischall/musicbrainz-mcp/issues/98)) ([fcbc096](https://github.com/chrischall/musicbrainz-mcp/commit/fcbc09623689574cfb3367b666380b46c8a4e480))
+
 ## [1.0.0](https://github.com/chrischall/musicbrainz-mcp/compare/v0.3.2...v1.0.0) (2026-09-18)
 
 
