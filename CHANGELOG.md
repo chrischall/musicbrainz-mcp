@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/chrischall/musicbrainz-mcp/compare/v1.1.0...v1.1.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* **tools:** every write here is reversible — say so ([#100](https://github.com/chrischall/musicbrainz-mcp/issues/100)) ([23bfb5e](https://github.com/chrischall/musicbrainz-mcp/commit/23bfb5e80f726be01490a2ea990790b9aed9035e))
+
 ## [1.1.0](https://github.com/chrischall/musicbrainz-mcp/compare/v1.0.0...v1.1.0) (2026-09-19)
 
 
