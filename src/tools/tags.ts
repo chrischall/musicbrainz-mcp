@@ -25,6 +25,7 @@ export function registerTagTools(server: McpServer): void {
         readOnly: false,
         idempotent: true,
         openWorld: true,
+        destructive: false,
       }),
       inputSchema: z.object({
         entity: AnnotatableEntitySchema.describe('Entity type to tag'),
