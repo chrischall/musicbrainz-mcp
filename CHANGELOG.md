@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.2](https://github.com/chrischall/musicbrainz-mcp/compare/v1.1.1...v1.1.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv from 17.4.2 to 18.0.1 ([#105](https://github.com/chrischall/musicbrainz-mcp/issues/105)) ([8263e98](https://github.com/chrischall/musicbrainz-mcp/commit/8263e984600690e20e9224d3b48f0fecc5e4fc22))
+* **deps:** Bump zod in the production-dependencies group ([#104](https://github.com/chrischall/musicbrainz-mcp/issues/104)) ([d6a36a3](https://github.com/chrischall/musicbrainz-mcp/commit/d6a36a3ee57517b8cb3e938c445f3097c9aede10))
+* **deps:** require zod ^4.6.5 to match @chrischall/mcp-utils 2.4.0 ([#108](https://github.com/chrischall/musicbrainz-mcp/issues/108)) ([1e6ac42](https://github.com/chrischall/musicbrainz-mcp/commit/1e6ac420f84f2ef88840384aad604054a577b876))
+* **deps:** upgrade @chrischall/mcp-utils to 2.4.0 and @fetchproxy/* to 3.2.0 ([#107](https://github.com/chrischall/musicbrainz-mcp/issues/107)) ([193b034](https://github.com/chrischall/musicbrainz-mcp/commit/193b034844aa368f79be728af358cb2537f4da7b))
+
 ## [1.1.1](https://github.com/chrischall/musicbrainz-mcp/compare/v1.1.0...v1.1.1) (2026-09-21)
 
 
