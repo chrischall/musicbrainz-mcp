@@ -1,6 +1,6 @@
 # musicbrainz-mcp
 
-MCP server for [MusicBrainz](https://musicbrainz.org), the open music encyclopedia. Wraps the `/ws/2` REST API (`https://musicbrainz.org/ws/2`) plus the Cover Art Archive and exposes 9 tools to Claude over stdio: 6 read-only (search/lookup/browse/cover-art/resolve/healthcheck) and 3 OAuth-authenticated, confirm-gated writes (tags, ratings, collections).
+MCP server for [MusicBrainz](https://musicbrainz.org), the open music encyclopedia. Wraps the `/ws/2` REST API (`https://musicbrainz.org/ws/2`) plus the Cover Art Archive and exposes 9 tools to Claude over stdio: 6 read-only (search/lookup/browse/cover-art/resolve/healthcheck) and 3 OAuth-authenticated, confirmation-gated writes (tags, ratings, collections).
 
 ## Commands
 
@@ -37,9 +37,9 @@ src/
     coverart.ts     # musicbrainz_cover_art (Cover Art Archive)
     resolve.ts      # musicbrainz_resolve (URL → entity)
     utilities.ts    # musicbrainz_healthcheck
-    tags.ts         # musicbrainz_submit_tags (OAuth, confirm-gated)
-    ratings.ts      # musicbrainz_submit_rating (OAuth, confirm-gated)
-    collections.ts  # musicbrainz_modify_collection (OAuth, confirm-gated)
+    tags.ts         # musicbrainz_submit_tags (OAuth, confirmation-gated)
+    ratings.ts      # musicbrainz_submit_rating (OAuth, confirmation-gated)
+    collections.ts  # musicbrainz_modify_collection (OAuth, confirmation-gated)
 ```
 
 Each tool file exports `register<Domain>Tools(server)` calling `server.registerTool(name, { description, annotations, inputSchema }, handler)` and returns results via `textResult(...)`. `index.ts` wires them through `runMcp`.
@@ -54,9 +54,9 @@ MusicBrainz allows **at most 1 request/second** per source; exceeding it returns
 - **Writes use OAuth2.** `client.write` attaches a Bearer token (via `createOAuth2Refresher` from `@chrischall/mcp-utils`, cached with expiry) plus the mandatory `client=musicbrainz-mcp-<version>` param, and posts `Content-Type: application/xml; charset=utf-8`. It returns the **raw** response body — MusicBrainz answers writes with an XML `<message><text>OK</text></message>`, not JSON, so we never `JSON.parse` it.
 - **Deferred-config-error pattern (OAuth only):** the constructor reads `MUSICBRAINZ_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN`; if any is missing it stores a write-side `configError` instead of throwing. The server boots and serves `tools/list` regardless; the error only surfaces on the first write call. (Reads never have a config error.)
 
-## Writes are confirm-gated
+## Writes are confirmation-gated
 
-Every mutating tool takes `confirm` (`schemaConfirm`). Without `confirm: true` it makes **no** network call and returns a dry-run `preview` (including the exact XML for tags/ratings). With `confirm: true` it routes through `client.write`. See `docs/MUSICBRAINZ-API.md` for the pinned write shapes:
+Every mutating tool takes an optional `confirmToken` (`confirmTokenParam`) and gates `client.write` behind `requireConfirmationWithFallback(ctx, confirmationFromEnv({...}))` from `@chrischall/mcp-utils`. A client that supports elicitation gets a confirmation prompt. One that does not (default `MCP_CONFIRM_MODE=ask-user`) gets a two-phase flow: phase 1 makes **no** network call and returns `status: "confirmation-required"` with the `preview` (method, path, and the exact XML for tags/ratings) and a `confirmToken`; phase 2 repeats the call with that token and routes through `client.write`. The token is bound to the tool, the target MBID (the collection MBID for collections) and a hash of exactly what will be sent (method + path + XML), so a changed argument is refused as `DRAFT_CHANGED` and a replayed token as `TOKEN_REUSED`. `MCP_CONFIRM_MODE=refuse` refuses writes on clients that cannot be prompted. See `docs/MUSICBRAINZ-API.md` for the pinned write shapes:
 - tags/ratings: `POST /ws/2/tag` / `/ws/2/rating` with mmd-2.0 XML.
 - collections: bodyless `PUT`/`DELETE /ws/2/collection/<mbid>/<entity-type>/<MBID>;<MBID>`.
 
@@ -69,6 +69,9 @@ MUSICBRAINZ_USER_AGENT=...                 # optional UA override
 MUSICBRAINZ_OAUTH_CLIENT_ID=...            # writes only
 MUSICBRAINZ_OAUTH_CLIENT_SECRET=...        # writes only
 MUSICBRAINZ_OAUTH_REFRESH_TOKEN=...        # writes only
+MCP_CONFIRM_MODE=ask-user                  # ask-user | auto | refuse — writes on clients without elicitation
+MCP_CONFIRM_TTL_SECONDS=600                # confirmToken lifetime
+MCP_CONFIRM_SECRET=...                     # token signing key; default random per process
 ```
 
 Loaded via `dotenv` from `.env` next to `dist/` (guarded import; the mcpb bundle omits `dotenv` and the host provides env). `readEnvVar` treats blank, `"undefined"`, `"null"`, and unsubstituted `${FOO}` placeholders as unset.

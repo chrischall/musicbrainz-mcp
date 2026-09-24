@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
+  confirmationFromEnv,
+  confirmTokenParam,
   minifiedResult,
-  schemaConfirm,
+  requireConfirmationWithFallback,
   toolAnnotations,
 } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
@@ -18,7 +20,7 @@ export function registerRatingTools(server: McpServer): void {
       description:
         'Set YOUR rating for a MusicBrainz entity (needs OAuth: MUSICBRAINZ_OAUTH_* with the `rating` scope). ' +
         'Rating is 0–100 (MusicBrainz shows it as 1–5 stars in steps of 20; 0 removes your rating). ' +
-        'Without confirm: true it returns a dry-run preview and makes NO network call; with confirm: true it submits.' +
+        'Asks the user to confirm first: a confirmation prompt where the client supports one; otherwise the first call returns a preview and a confirmToken, and only a repeat call with that token proceeds (see MCP_CONFIRM_MODE). Nothing is sent before confirmation.' +
         ATTRIBUTION_NOTE,
       annotations: toolAnnotations({
         title: 'Submit a user rating to MusicBrainz',
@@ -36,25 +38,41 @@ export function registerRatingTools(server: McpServer): void {
           .min(0)
           .max(100)
           .describe('Rating 0–100 (0 removes; 20/40/60/80/100 = 1–5 stars)'),
-        confirm: schemaConfirm,
+        confirmToken: confirmTokenParam,
       }),
     },
-    async ({ entity, mbid, rating, confirm }) => {
+    async ({ entity, mbid, rating, confirmToken }, ctx) => {
       const xml = buildRatingXml(entity, mbid, rating);
-      if (confirm !== true) {
-        return minifiedResult({
-          dryRun: true,
-          action: 'submit_rating',
-          entity,
-          mbid,
-          rating,
-          xml,
-          note:
+      const gate = await requireConfirmationWithFallback(
+        ctx,
+        confirmationFromEnv({
+          action: 'musicbrainz.submit_rating',
+          message:
             rating === 0
-              ? 'Dry run — re-run with confirm: true to REMOVE your rating.'
-              : 'Dry run — re-run with confirm: true to submit this rating to your MusicBrainz account.',
-        });
-      }
+              ? 'Review and confirm REMOVING your MusicBrainz rating:'
+              : 'Review and confirm this rating on your MusicBrainz account:',
+          details: { entity, mbid, rating },
+          tool: 'musicbrainz_submit_rating',
+          confirmToken,
+          subject: () => ({
+            target: mbid,
+            payload: { method: 'POST', path: '/rating', xml },
+            preview: {
+              method: 'POST',
+              path: '/rating',
+              entity,
+              mbid,
+              rating,
+              xml,
+              note:
+                rating === 0
+                  ? 'Confirming will REMOVE your rating.'
+                  : 'Confirming will submit this rating to your MusicBrainz account.',
+            },
+          }),
+        })
+      );
+      if (gate) return gate;
       const response = await client.write('POST', '/rating', { xmlBody: xml });
       return minifiedResult({
         submitted: true,

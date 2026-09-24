@@ -26,9 +26,9 @@ Search to get an MBID, then lookup/browse for detail:
 2. `musicbrainz_browse { entity: "release-group", linkedBy: "artist", mbid: <MBID>, limit: 100 }` → discography
 3. `musicbrainz_cover_art { entity: "release-group", mbid: <RG-MBID> }` → album art
 
-## Writes (OAuth, confirm-gated)
+## Writes (OAuth, confirmation-gated)
 
-`musicbrainz_submit_tags`, `musicbrainz_submit_rating`, and `musicbrainz_modify_collection` modify the user's own MusicBrainz account. Each returns a **dry-run preview** unless called with `confirm: true` — show the preview to the user and only re-call with `confirm: true` after they approve. They require `MUSICBRAINZ_OAUTH_*` to be configured.
+`musicbrainz_submit_tags`, `musicbrainz_submit_rating`, and `musicbrainz_modify_collection` modify the user's own MusicBrainz account. Each asks the user to confirm first: a confirmation prompt where the client supports one; otherwise the first call sends nothing and returns `status: "confirmation-required"` with a `preview` and a `confirmToken` — show the preview to the user and only repeat the same call with that `confirmToken` after they approve. A token works once, and changing any argument invalidates it (`DRAFT_CHANGED`: re-confirm the fresh preview). They require `MUSICBRAINZ_OAUTH_*` to be configured.
 
 ## Response shape (`view`)
 
@@ -80,8 +80,8 @@ The other five tools take no `view`, for three different reasons:
   already narrower than any projection.
 - **`musicbrainz_submit_tags` / `musicbrainz_submit_rating` /
   `musicbrainz_modify_collection`** — a write's response is a receipt (the
-  dry-run preview, or `{submitted, …}`): nothing to strip and everything to
-  keep.
+  confirmation preview, or `{submitted, …}`): nothing to strip and everything
+  to keep.
 
 ## Notes
 

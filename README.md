@@ -21,7 +21,7 @@ An MCP server for [MusicBrainz](https://musicbrainz.org), the open music encyclo
 | `musicbrainz_resolve` | Turn a pasted musicbrainz.org URL into its entity |
 | `musicbrainz_healthcheck` | Verify connectivity and whether OAuth writes are configured |
 
-**Write (OAuth, confirm-gated):**
+**Write (OAuth, confirmed before sending):**
 
 | Tool | What it does |
 | --- | --- |
@@ -29,7 +29,7 @@ An MCP server for [MusicBrainz](https://musicbrainz.org), the open music encyclo
 | `musicbrainz_submit_rating` | Set your 0–100 rating for an entity |
 | `musicbrainz_modify_collection` | Add/remove entities in one of your collections |
 
-Each write makes **no** network call without `confirm: true`; it returns a dry-run preview first.
+Each write asks you to confirm before it makes any network call — see [Confirmations](#confirmations).
 
 Every read above takes a `view`, except `musicbrainz_cover_art`. It defaults to
 `compact`, which strips image and avatar URLs — a subtractive rule, so it cannot
@@ -65,6 +65,16 @@ MUSICBRAINZ_OAUTH_CLIENT_ID=...
 MUSICBRAINZ_OAUTH_CLIENT_SECRET=...
 MUSICBRAINZ_OAUTH_REFRESH_TOKEN=...
 ```
+
+## Confirmations
+
+Every write asks you first. A client that can show a confirmation prompt (Claude Code) shows one, with the entity, tags / rating / collection change. A client that cannot (claude.ai, Claude Desktop) gets a two-step flow instead: the first call sends nothing and returns a `confirmation-required` preview — the exact XML for tags and ratings, the method and path for collections — plus a `confirmToken`; only a repeat of the same call with that token submits. A token acts once, and changing any argument between the two calls invalidates it.
+
+| variable | default | |
+|---|---|---|
+| `MCP_CONFIRM_MODE` | `ask-user` | What a write does on a client that cannot show a confirmation prompt (claude.ai, Claude Desktop). `ask-user`: two steps — the first call does nothing and returns a preview plus a token, and the model must get your approval in chat before calling again with it. `auto`: the same two steps, but the model may use the token after reviewing the preview itself. `refuse`: writes are refused on such clients. A client that can show prompts (Claude Code) always gets the real prompt. An unrecognised value is treated as `refuse`. |
+| `MCP_CONFIRM_TTL_SECONDS` | `600` | How long a token stays valid. |
+| `MCP_CONFIRM_SECRET` | random per process | Signing key; set it only if tokens must survive a server restart. |
 
 ## Development
 
