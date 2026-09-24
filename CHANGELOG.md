@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/chrischall/musicbrainz-mcp/compare/v1.1.2...v1.2.0) (2026-09-24)
+
+
+### Features
+
+* confirm writes with a preview token instead of confirm: true ([#109](https://github.com/chrischall/musicbrainz-mcp/issues/109)) ([330cdbc](https://github.com/chrischall/musicbrainz-mcp/commit/330cdbcbb51de912fb9c5393e548b45ca5f12d05))
+
 ## [1.1.2](https://github.com/chrischall/musicbrainz-mcp/compare/v1.1.1...v1.1.2) (2026-09-23)
 
 
