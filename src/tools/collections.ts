@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
+  confirmationFromEnv,
+  confirmTokenParam,
   minifiedResult,
-  schemaConfirm,
+  requireConfirmationWithFallback,
   toolAnnotations,
 } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
@@ -18,7 +20,7 @@ export function registerCollectionTools(server: McpServer): void {
         'Add or remove entities (releases, artists, recordings, release-groups, works, labels, places, areas, events) ' +
         'in one of YOUR MusicBrainz collections (needs OAuth: MUSICBRAINZ_OAUTH_* with the `collection` scope). ' +
         'Get the collection MBID from its URL (musicbrainz.org/collection/<mbid>). ' +
-        'Without confirm: true it returns a dry-run preview and makes NO network call; with confirm: true it applies the change.' +
+        'Asks the user to confirm first: a confirmation prompt where the client supports one; otherwise the first call returns a preview and a confirmToken, and only a repeat call with that token proceeds (see MCP_CONFIRM_MODE). Nothing is changed before confirmation.' +
         ATTRIBUTION_NOTE,
       annotations: toolAnnotations({
         title: 'Add or remove entities in a MusicBrainz collection',
@@ -40,23 +42,37 @@ export function registerCollectionTools(server: McpServer): void {
           .min(1)
           .max(100)
           .describe('MBIDs of the entities to add/remove'),
-        confirm: schemaConfirm,
+        confirmToken: confirmTokenParam,
       }),
     },
-    async ({ action, collection, entityType, mbids, confirm }) => {
+    async ({ action, collection, entityType, mbids, confirmToken }, ctx) => {
       const method = action === 'add' ? 'PUT' : 'DELETE';
       const path = `/collection/${collection}/${entityType}/${mbids.join(';')}`;
-      if (confirm !== true) {
-        return minifiedResult({
-          dryRun: true,
-          action: `${action}_collection`,
-          method,
-          collection,
-          entityType,
-          mbids,
-          note: `Dry run — re-run with confirm: true to ${action} ${mbids.length} ${entityType} ${action === 'add' ? 'to' : 'from'} the collection.`,
-        });
-      }
+      const effect = `${action} ${mbids.length} ${entityType} ${action === 'add' ? 'to' : 'from'} the collection`;
+      const gate = await requireConfirmationWithFallback(
+        ctx,
+        confirmationFromEnv({
+          action: `musicbrainz.${action}_collection`,
+          message: `Review and confirm: ${effect}.`,
+          details: { action, collection, entityType, mbids: mbids.join(', ') },
+          tool: 'musicbrainz_modify_collection',
+          confirmToken,
+          subject: () => ({
+            target: collection,
+            payload: { method, path },
+            preview: {
+              action: `${action}_collection`,
+              method,
+              path,
+              collection,
+              entityType,
+              mbids,
+              note: `Confirming will ${effect}.`,
+            },
+          }),
+        })
+      );
+      if (gate) return gate;
       const response = await client.write(method, path);
       return minifiedResult({
         submitted: true,

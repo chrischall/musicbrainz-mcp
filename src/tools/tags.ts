@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import {
+  confirmationFromEnv,
+  confirmTokenParam,
   minifiedResult,
-  schemaConfirm,
+  requireConfirmationWithFallback,
   toolAnnotations,
 } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
@@ -18,7 +20,7 @@ export function registerTagTools(server: McpServer): void {
       description:
         'Apply user tags to a MusicBrainz entity on YOUR account (needs OAuth: MUSICBRAINZ_OAUTH_* with the `tag` scope). ' +
         'Default `vote: upvote` adds the tags; `downvote` opposes them; `withdraw` removes your vote. ' +
-        'Without confirm: true it returns a dry-run preview (the exact XML) and makes NO network call; with confirm: true it submits.' +
+        'Asks the user to confirm first: a confirmation prompt where the client supports one; otherwise the first call returns a preview and a confirmToken, and only a repeat call with that token proceeds (see MCP_CONFIRM_MODE). The preview shows the exact XML; nothing is sent before confirmation.' +
         ATTRIBUTION_NOTE,
       annotations: toolAnnotations({
         title: 'Submit user tags to MusicBrainz',
@@ -39,24 +41,37 @@ export function registerTagTools(server: McpServer): void {
           .enum(['upvote', 'downvote', 'withdraw'])
           .optional()
           .describe('Vote direction (default upvote)'),
-        confirm: schemaConfirm,
+        confirmToken: confirmTokenParam,
       }),
     },
-    async ({ entity, mbid, tags, vote, confirm }) => {
+    async ({ entity, mbid, tags, vote, confirmToken }, ctx) => {
       const v: TagVote = vote ?? 'upvote';
       const xml = buildTagsXml(entity, mbid, tags, v);
-      if (confirm !== true) {
-        return minifiedResult({
-          dryRun: true,
-          action: 'submit_tags',
-          entity,
-          mbid,
-          tags,
-          vote: v,
-          xml,
-          note: 'Dry run — re-run with confirm: true to submit these tags to your MusicBrainz account.',
-        });
-      }
+      const gate = await requireConfirmationWithFallback(
+        ctx,
+        confirmationFromEnv({
+          action: 'musicbrainz.submit_tags',
+          message: `Review and confirm these tags (${v}) on your MusicBrainz account:`,
+          details: { entity, mbid, tags: tags.join(', '), vote: v },
+          tool: 'musicbrainz_submit_tags',
+          confirmToken,
+          subject: () => ({
+            target: mbid,
+            payload: { method: 'POST', path: '/tag', xml },
+            preview: {
+              method: 'POST',
+              path: '/tag',
+              entity,
+              mbid,
+              tags,
+              vote: v,
+              xml,
+              note: 'Confirming will submit these tags to your MusicBrainz account.',
+            },
+          }),
+        })
+      );
+      if (gate) return gate;
       const response = await client.write('POST', '/tag', { xmlBody: xml });
       return minifiedResult({
         submitted: true,

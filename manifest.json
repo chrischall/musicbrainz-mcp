@@ -96,15 +96,15 @@
     },
     {
       "name": "musicbrainz_submit_tags",
-      "description": "Submit user tags to your account (OAuth; confirm-gated)"
+      "description": "Submit user tags to your account (OAuth; asks you to confirm first)"
     },
     {
       "name": "musicbrainz_submit_rating",
-      "description": "Submit a user rating to your account (OAuth; confirm-gated)"
+      "description": "Submit a user rating to your account (OAuth; asks you to confirm first)"
     },
     {
       "name": "musicbrainz_modify_collection",
-      "description": "Add/remove entities in your collection (OAuth; confirm-gated)"
+      "description": "Add/remove entities in your collection (OAuth; asks you to confirm first)"
     }
   ],
   "compatibility": {
