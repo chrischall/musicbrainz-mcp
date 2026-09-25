@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.0...v1.2.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv in the production-dependencies group ([#112](https://github.com/chrischall/musicbrainz-mcp/issues/112)) ([bedfd35](https://github.com/chrischall/musicbrainz-mcp/commit/bedfd356565418ca2a4fb7e6ed6bdf6da11f630c))
+
 ## [1.2.0](https://github.com/chrischall/musicbrainz-mcp/compare/v1.1.2...v1.2.0) (2026-09-24)
 
 
