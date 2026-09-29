@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.1...v1.2.2) (2026-09-29)
+
+
+### Bug Fixes
+
+* **deps:** Bump the production-dependencies group with 3 updates ([#116](https://github.com/chrischall/musicbrainz-mcp/issues/116)) ([853d96d](https://github.com/chrischall/musicbrainz-mcp/commit/853d96d9bf6b15b9acc16f1d45a17b177e1010fc))
+
 ## [1.2.1](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.0...v1.2.1) (2026-09-24)
 
 
