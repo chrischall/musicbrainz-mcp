@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { EdgeBlockedError, OAuth2RefreshError } from '@chrischall/mcp-utils';
 import { MusicBrainzClient, type Query } from '../src/client.js';
 
 interface Recorded {
@@ -168,6 +169,36 @@ describe('MusicBrainzClient writes', () => {
     await client.write('POST', '/rating', { xmlBody: '<a/>' });
     await client.write('POST', '/rating', { xmlBody: '<b/>' });
     expect(calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(1);
+  });
+
+  it('reports a CDN/WAF-blocked refresh as EdgeBlockedError and keeps the stored refresh token', async () => {
+    // A Cloudflare refusal page on the token endpoint is not MusicBrainz judging
+    // the grant: it must surface as an edge block (not "refresh token revoked —
+    // re-authenticate"), and the next write must re-try the SAME refresh token.
+    const blocked = new Response(
+      '<!DOCTYPE html><html><head><title>Attention Required! | Cloudflare</title></head><body><div id="cf-error-details">Sorry, you have been blocked</div></body></html>',
+      { status: 403, headers: { 'content-type': 'text/html' } },
+    );
+    const { fetchImpl, calls } = mockFetch([
+      {
+        match: 'oauth2/token',
+        responses: [blocked, jsonResponse(200, { access_token: 'AT-after-block', expires_in: 3600 })],
+      },
+      { match: '/ws/2/tag', responses: [jsonResponse(200, '<message><text>OK</text></message>')] },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt-original' });
+
+    const err = await client.write('POST', '/tag', { xmlBody: '<x/>' }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(EdgeBlockedError);
+    expect(err).not.toBeInstanceOf(OAuth2RefreshError);
+    expect((err as EdgeBlockedError).vendor).toBe('Cloudflare');
+    expect(calls.filter((c) => c.url.includes('/ws/2/tag'))).toHaveLength(0);
+
+    await expect(client.write('POST', '/tag', { xmlBody: '<x/>' })).resolves.toContain('OK');
+    const tokenCalls = calls.filter((c) => c.url.includes('oauth2/token'));
+    expect(tokenCalls).toHaveLength(2);
+    expect(tokenCalls[1]!.body).toContain('refresh_token=rt-original');
+    expect(calls.find((c) => c.url.includes('/ws/2/tag'))!.headers['Authorization']).toBe('Bearer AT-after-block');
   });
 
   it('re-mints the access token when within 60s of expiry', async () => {
