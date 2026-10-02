@@ -409,6 +409,27 @@ describe('MusicBrainzClient transport (fake timers)', () => {
     );
   });
 
+  it('re-sends the XML body and Content-Type on a retried write', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
+      {
+        match: '/ws/2/tag',
+        responses: [jsonResponse(503, 'busy'), jsonResponse(429, 'slow'), jsonResponse(200, '<message><text>OK</text></message>')],
+      },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
+    await expect(client.write('POST', '/tag', { xmlBody: '<metadata/>' })).resolves.toBe('<message><text>OK</text></message>');
+    const writes = calls.filter((c) => c.url.includes('/ws/2/tag'));
+    expect(writes).toHaveLength(3);
+    for (const w of writes) {
+      expect(w.method).toBe('POST');
+      expect(w.body).toBe('<metadata/>');
+      expect(w.headers['Content-Type']).toBe('application/xml; charset=utf-8');
+      expect(w.headers['Authorization']).toBe('Bearer AT');
+      expect(w.url).toContain('client=musicbrainz-mcp-');
+    }
+  });
+
   it('holds the 1 request/second limit across concurrent calls AND their retries', async () => {
     vi.useFakeTimers({ now: 0 });
     try {
