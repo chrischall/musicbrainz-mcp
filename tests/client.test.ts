@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { EdgeBlockedError, OAuth2RefreshError } from '@chrischall/mcp-utils';
+import { describe, it, expect, vi } from 'vitest';
+import { EdgeBlockedError, OAuth2RefreshError, RateLimitError, UnreachableError } from '@chrischall/mcp-utils';
 import { MusicBrainzClient, type Query } from '../src/client.js';
 
 interface Recorded {
@@ -275,5 +275,165 @@ describe('MusicBrainzClient writes', () => {
     expect(c.body).toBeUndefined();
     expect(c.headers['Content-Type']).toBeUndefined();
     expect(c.url).toContain('client=musicbrainz-mcp-');
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Transport behaviour on the shared mcp-utils createApiClient (fleet-audit
+// #1065 / #576 / #869), pinned with fake timers against the REAL timer-based
+// sleep, timeout and throttle.
+// ────────────────────────────────────────────────────────────────────────────
+describe('MusicBrainzClient transport (fake timers)', () => {
+  /** A fetch that never answers until its signal aborts. */
+  function hangingFetch() {
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(
+      (url: string | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          calls.push(String(url));
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
+    );
+    return { fetchImpl: fetchImpl as unknown as typeof fetch, calls };
+  }
+
+  it('times a hung request out at 20s as UnreachableError', async () => {
+    vi.useFakeTimers();
+    try {
+      const { fetchImpl, calls } = hangingFetch();
+      const client = new MusicBrainzClient({ fetchImpl, throttle: passThrough, oauth: null });
+      const pending = client.get('/artist/x').catch((e) => e);
+      await vi.advanceTimersByTimeAsync(19_999);
+      expect(calls).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      const err = await pending;
+      expect(err).toBeInstanceOf(UnreachableError);
+      expect(String(err.message)).toMatch(/MusicBrainz unreachable/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bounds a body that stalls after the headers (#576)', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = (async () =>
+        new Response(new ReadableStream<Uint8Array>({ start() {} }), { status: 200 })) as unknown as typeof fetch;
+      const client = new MusicBrainzClient({ fetchImpl, throttle: passThrough, oauth: null });
+      const pending = client.get('/artist/x').catch((e) => e);
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(await pending).toBeInstanceOf(UnreachableError);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('honours a delta-seconds Retry-After (sleeps 7s, then replays)', async () => {
+    vi.useFakeTimers();
+    try {
+      const { fetchImpl, calls } = mockFetch([
+        { match: '/ws/2/release', responses: [jsonResponse(429, 'slow', { 'retry-after': '7' }), jsonResponse(200, { ok: true })] },
+      ]);
+      const client = new MusicBrainzClient({ fetchImpl, throttle: passThrough, oauth: null });
+      const pending = client.get<{ ok: boolean }>('/release/x');
+      await vi.advanceTimersByTimeAsync(6_999);
+      expect(calls).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(pending).resolves.toEqual({ ok: true });
+      expect(calls).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to the 1.1s spacing for an HTTP-date Retry-After', async () => {
+    const { fetchImpl } = mockFetch([
+      {
+        match: '/ws/2/release',
+        responses: [jsonResponse(503, 'busy', { 'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT' }), jsonResponse(200, {})],
+      },
+    ]);
+    const slept: number[] = [];
+    const client = new MusicBrainzClient({
+      fetchImpl,
+      throttle: passThrough,
+      sleep: async (ms) => {
+        slept.push(ms);
+      },
+      oauth: null,
+    });
+    await client.get('/release/x');
+    expect(slept).toEqual([1100]);
+  });
+
+  it('keeps the upstream Retry-After on the exhausted RateLimitError', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      {
+        match: '/ws/2/release',
+        responses: [jsonResponse(429, ''), jsonResponse(503, ''), jsonResponse(503, 'busy', { 'retry-after': '7' })],
+      },
+    ]);
+    const client = makeClient(fetchImpl);
+    const err = await client.get('/release/x').catch((e) => e);
+    expect(calls).toHaveLength(3); // initial + 2 retries
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect(err.retryAfterSeconds).toBe(7);
+    expect(String(err.message)).toBe('Rate limited by MusicBrainz. Retry after 7s.');
+  });
+
+  it('maps a 401 on a read to the re-authenticate error', async () => {
+    const { fetchImpl } = mockFetch([{ match: '/ws/2/artist', responses: [jsonResponse(401, { error: 'nope' }, { 'content-type': 'application/json' })] }]);
+    const client = makeClient(fetchImpl);
+    await expect(client.get('/artist/x')).rejects.toThrow('Unauthorized (401) from MusicBrainz.');
+  });
+
+  it('maps a 401 on a write to the re-authenticate error with the scope hint', async () => {
+    const { fetchImpl } = mockFetch([
+      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
+      { match: '/ws/2/tag', responses: [jsonResponse(401, { error: 'nope' }, { 'content-type': 'application/json' })] },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
+    const err = await client.write('POST', '/tag', { xmlBody: '<x/>' }).catch((e) => e);
+    expect(String(err.message)).toBe('Unauthorized (401) from MusicBrainz.');
+    expect(err.hint).toMatch(/tag\/rating\/collection/);
+  });
+
+  it('formats a non-2xx write as an McpToolError naming method + path (no query string)', async () => {
+    const { fetchImpl } = mockFetch([
+      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
+      { match: '/ws/2/tag', responses: [jsonResponse(400, 'bad xml')] },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
+    await expect(client.write('POST', '/tag', { xmlBody: '<x/>' })).rejects.toThrow(
+      'MusicBrainz error 400 for POST /tag: bad xml',
+    );
+  });
+
+  it('holds the 1 request/second limit across concurrent calls AND their retries', async () => {
+    vi.useFakeTimers({ now: 0 });
+    try {
+      const starts: number[] = [];
+      let n = 0;
+      const fetchImpl = (async () => {
+        starts.push(Date.now());
+        n += 1;
+        // The first call is told to retry immediately (Retry-After: 0) — the
+        // retry must still wait its turn in the 1.1s spacing.
+        return n === 1
+          ? jsonResponse(503, 'busy', { 'retry-after': '0' })
+          : jsonResponse(200, { ok: true });
+      }) as unknown as typeof fetch;
+      // Default throttle + default sleep: the production spacing.
+      const client = new MusicBrainzClient({ fetchImpl, oauth: null });
+      const all = Promise.all([client.get('/a'), client.get('/b'), client.coverArt('release', 'r')]);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await all;
+      expect(starts).toHaveLength(4);
+      for (let i = 1; i < starts.length; i++) {
+        expect(starts[i]! - starts[i - 1]!).toBeGreaterThanOrEqual(1100);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

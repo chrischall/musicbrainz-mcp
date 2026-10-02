@@ -46,7 +46,7 @@ Each tool file exports `register<Domain>Tools(server)` calling `server.registerT
 
 ## Rate limiting (the central constraint)
 
-MusicBrainz allows **at most 1 request/second** per source; exceeding it returns **HTTP 503** and can get the IP blocked. `client.ts` enforces this *proactively* via `createThrottle` from `@chrischall/mcp-utils` (a serialized min-interval scheduler originally hoisted from this repo): every upstream call (reads and writes) funnels through one serialized queue that spaces request *starts* ≥1.1s apart, so concurrent tool calls line up instead of bursting. `client.send` additionally retries a 503/429 up to twice (honoring `Retry-After`). Don't add a code path that hits MusicBrainz outside `client` — it would bypass the throttle.
+MusicBrainz allows **at most 1 request/second** per source; exceeding it returns **HTTP 503** and can get the IP blocked. `client.ts` enforces this *proactively* via `createThrottle` from `@chrischall/mcp-utils` (a serialized min-interval scheduler originally hoisted from this repo): every upstream call (reads and writes) funnels through one serialized queue that spaces request *starts* ≥1.1s apart, so concurrent tool calls line up instead of bursting. The throttle sits at the fetch seam of the shared `createApiClient` (built per call in `client.call`), so every HTTP *attempt* takes a slot — including the up-to-two 429/503 retries, which honor a delta-seconds `Retry-After` capped at 30s. A retry can therefore never land closer than 1.1s to another request. Don't add a code path that hits MusicBrainz outside `client` — it would bypass the throttle.
 
 ## Auth & client
 
@@ -78,7 +78,7 @@ Loaded via `dotenv` from `.env` next to `dist/` (guarded import; the mcpb bundle
 
 ## Testing
 
-Tests live in `tests/` (vitest). No real network — `fetch` (in `client.test.ts`) and `client.get`/`client.coverArt`/`client.write` (in tool tests) are mocked. (The throttle itself is unit-tested upstream in `@chrischall/mcp-utils`.) `tests/server-boot.test.ts` spawns the real built artifacts (`dist/bundle.js` with no `node_modules`, and `dist/index.js`) and asserts the `initialize` + `tools/list` handshake.
+Tests live in `tests/` (vitest). No real network — `fetch` (in `client.test.ts`) and `client.get`/`client.coverArt`/`client.write` (in tool tests) are mocked. (The throttle itself is unit-tested upstream in `@chrischall/mcp-utils`; `client.test.ts` pins the end-to-end 1 req/s spacing, timeout and Retry-After behaviour with fake timers.) `tests/server-boot.test.ts` spawns the real built artifacts (`dist/bundle.js` with no `node_modules`, and `dist/index.js`) and asserts the `initialize` + `tools/list` handshake.
 
 ## Versioning
 

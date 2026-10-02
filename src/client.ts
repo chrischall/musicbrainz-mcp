@@ -3,8 +3,8 @@ import { fileURLToPath } from 'url';
 import {
   loadDotenvSafely,
   readEnvVar,
-  buildQueryString,
-  formatApiError,
+  createApiClient,
+  ApiError,
   createHelpfulError,
   McpToolError,
   RateLimitError,
@@ -30,12 +30,16 @@ const SERVICE = 'MusicBrainz';
 // > 1s so we never trip the 1-request/second limit (which returns 503).
 const MIN_INTERVAL_MS = 1100;
 const REQUEST_TIMEOUT_MS = 20_000;
-// Retry budget for a 503/429 (rate-limit) response after the throttle.
+// Retry budget for a 503/429 (rate-limit) response.
 const MAX_RATE_RETRIES = 2;
-// Ceiling on an honored `Retry-After` (mirroring viator's 30s cap). Because the
-// backoff sleeps *inside* the serialized throttle slot, an uncapped value (a CDN
-// can emit `Retry-After: 3600`) would park every queued call for that long.
+const RATE_STATUSES = [429, 503];
+// Ceiling on an honored `Retry-After` (mirroring viator's 30s cap) — an
+// uncapped value (a CDN can emit `Retry-After: 3600`) would pin a tool call
+// open for an hour.
 const MAX_RETRY_AFTER_MS = 30_000;
+const READ_401_HINT = 'The OAuth access token is missing, invalid, or lacks the required scope — re-authenticate.';
+const WRITE_401_HINT =
+  'The OAuth access token is missing, invalid, or lacks the required scope (tag/rating/collection) — re-authenticate.';
 // Every write must carry `client=<appname>-<version>` (MusicBrainz requirement).
 const CLIENT_PARAM = `musicbrainz-mcp-${VERSION}`;
 export const XML_CONTENT_TYPE = 'application/xml; charset=utf-8';
@@ -137,80 +141,104 @@ export class MusicBrainzClient {
     return this.oauthConfigError === null;
   }
 
-  // One throttled HTTP attempt-loop: spacing is enforced by the queue; a 503/429
-  // is retried (honoring Retry-After) up to MAX_RATE_RETRIES inside the same slot.
-  private send(method: string, url: string, init: { headers: Record<string, string>; body?: string }): Promise<Response> {
-    return this.throttle(async () => {
-      let attempt = 0;
-      for (;;) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        let res: Response;
-        try {
-          res = await this.fetchImpl(url, {
-            method,
-            headers: init.headers,
-            ...(init.body !== undefined ? { body: init.body } : {}),
-            signal: controller.signal,
-          });
-        } catch (e) {
-          throw e instanceof Error && e.name === 'AbortError'
-            ? new UnreachableError(SERVICE)
-            : new UnreachableError(SERVICE);
-        } finally {
-          clearTimeout(timer);
-        }
-
-        if ((res.status === 503 || res.status === 429) && attempt < MAX_RATE_RETRIES) {
-          attempt += 1;
-          const retryAfter = Number(res.headers.get('retry-after'));
-          await this.sleep(retryAfter > 0 ? Math.min(retryAfter * 1000, MAX_RETRY_AFTER_MS) : MIN_INTERVAL_MS);
-          continue;
-        }
+  /**
+   * One request through the shared mcp-utils `createApiClient`: a 20s timeout
+   * per attempt that also bounds the body read, up to {@link MAX_RATE_RETRIES}
+   * retries on 429/503 honoring a (capped) `Retry-After`, and the 401 / 429 /
+   * non-2xx mapping. Returns the raw body text.
+   *
+   * The client is built per call because two things live at its fetch seam:
+   *  - THE THROTTLE. Every individual HTTP attempt — retries included — takes
+   *    its own slot, so MusicBrainz's 1 request/second limit holds across
+   *    concurrent calls and their retries (a `Retry-After: 0` cannot jump the
+   *    queue). Throttling the whole call instead let a retry and the next
+   *    queued request land back to back.
+   *  - The last `Retry-After` seen, so an exhausted rate limit still tells the
+   *    caller how long MusicBrainz asked it to wait; and the raw XML body of a
+   *    write, which `createApiClient` (JSON bodies only) cannot express.
+   */
+  private async call(
+    base: string,
+    method: string,
+    path: string,
+    opts: { query?: Query; token?: string; xmlBody?: string; unauthorizedHint: string },
+  ): Promise<string> {
+    let retryAfter: string | null = null;
+    const api = createApiClient({
+      baseUrl: base,
+      serviceName: SERVICE,
+      getToken: () => opts.token,
+      baseHeaders: { 'User-Agent': this.ua },
+      timeout: REQUEST_TIMEOUT_MS,
+      retry: {
+        count: MAX_RATE_RETRIES,
+        delayMs: MIN_INTERVAL_MS,
+        statuses: RATE_STATUSES,
+        honorRetryAfter: true,
+        maxRetryAfterMs: MAX_RETRY_AFTER_MS,
+      },
+      sleep: this.sleep,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        const res = await this.throttle(() =>
+          this.fetchImpl(
+            url,
+            opts.xmlBody === undefined
+              ? init
+              : {
+                  ...init,
+                  headers: { ...(init.headers as Record<string, string>), 'Content-Type': XML_CONTENT_TYPE },
+                  body: opts.xmlBody,
+                },
+          ),
+        );
+        retryAfter = res.headers.get('retry-after');
         return res;
-      }
+      }) as typeof fetch,
+      onUnauthorized: () => createHelpfulError(`Unauthorized (401) from ${SERVICE}.`, { hint: opts.unauthorizedHint }),
+      onRateLimited: () => rateLimitError(retryAfter),
     });
-  }
-
-  private async parseJson<T>(res: Response, method: string, path: string): Promise<T> {
-    if (res.status === 401) {
-      throw createHelpfulError(`Unauthorized (401) from ${SERVICE}.`, {
-        hint: 'The OAuth access token is missing, invalid, or lacks the required scope — re-authenticate.',
+    try {
+      return await api.fetchHtml(method, path, {
+        headers: { Accept: 'application/json' },
+        ...(opts.query ? { query: opts.query } : {}),
       });
+    } catch (err) {
+      if (err instanceof McpToolError) throw err;
+      if (err instanceof ApiError) {
+        // An exhausted 503 surfaces as a plain ApiError (only 429 has its own
+        // hook); MusicBrainz uses 503 for its rate limit, so it is one too.
+        if (RATE_STATUSES.includes(err.status)) throw rateLimitError(retryAfter);
+        throw new McpToolError(err.message, { cause: err });
+      }
+      // A timeout (RequestTimeoutError) or a network failure.
+      throw new UnreachableError(SERVICE);
     }
-    if (res.status === 429 || res.status === 503) {
-      const retryAfter = Number(res.headers.get('retry-after'));
-      throw new RateLimitError(SERVICE, retryAfter > 0 ? retryAfter : undefined);
-    }
-    const text = await res.text();
-    if (!res.ok) {
-      throw new McpToolError(formatApiError(res.status, method, path, text, { service: SERVICE }));
-    }
-    if (text.length === 0) return undefined as T;
-    return JSON.parse(text) as T;
   }
 
   /** Read request against the /ws/2 web service. Always JSON; no auth. */
   async get<T>(path: string, query: Query = {}): Promise<T> {
-    const qs = buildQueryString({ ...query, fmt: 'json' });
-    const res = await this.send('GET', `${WS_BASE}${path}${qs}`, {
-      headers: { 'User-Agent': this.ua, Accept: 'application/json' },
+    const text = await this.call(WS_BASE, 'GET', path, {
+      query: { ...query, fmt: 'json' },
+      unauthorizedHint: READ_401_HINT,
     });
-    return this.parseJson<T>(res, 'GET', path);
+    return parseJson<T>(text);
   }
 
   /** Cover Art Archive lookup (a separate host) for a release / release-group. */
   async coverArt<T>(entity: 'release' | 'release-group', mbid: string): Promise<T> {
     const path = `/${entity}/${encodeURIComponent(mbid)}`;
-    const res = await this.send('GET', `${CAA_BASE}${path}`, {
-      headers: { 'User-Agent': this.ua, Accept: 'application/json' },
-    });
-    if (res.status === 404) {
-      throw createHelpfulError(`No cover art found for ${entity} ${mbid}.`, {
-        hint: 'The Cover Art Archive has no images for this MBID. Try a different release in the release-group.',
-      });
+    let text: string;
+    try {
+      text = await this.call(CAA_BASE, 'GET', path, { unauthorizedHint: READ_401_HINT });
+    } catch (err) {
+      if (err instanceof McpToolError && err.cause instanceof ApiError && err.cause.status === 404) {
+        throw createHelpfulError(`No cover art found for ${entity} ${mbid}.`, {
+          hint: 'The Cover Art Archive has no images for this MBID. Try a different release in the release-group.',
+        });
+      }
+      throw err;
     }
-    return this.parseJson<T>(res, 'GET', path);
+    return parseJson<T>(text);
   }
 
   private async accessToken(): Promise<string> {
@@ -227,33 +255,25 @@ export class MusicBrainzClient {
    */
   async write(method: 'POST' | 'PUT' | 'DELETE', path: string, opts: { query?: Query; xmlBody?: string } = {}): Promise<string> {
     const token = await this.accessToken();
-    const qs = buildQueryString({ ...opts.query, client: CLIENT_PARAM });
-    const headers: Record<string, string> = {
-      'User-Agent': this.ua,
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    };
-    if (opts.xmlBody !== undefined) headers['Content-Type'] = XML_CONTENT_TYPE;
-    const res = await this.send(method, `${WS_BASE}${path}${qs}`, {
-      headers,
-      ...(opts.xmlBody !== undefined ? { body: opts.xmlBody } : {}),
+    return this.call(WS_BASE, method, path, {
+      query: { ...opts.query, client: CLIENT_PARAM },
+      token,
+      ...(opts.xmlBody !== undefined ? { xmlBody: opts.xmlBody } : {}),
+      unauthorizedHint: WRITE_401_HINT,
     });
-
-    if (res.status === 401) {
-      throw createHelpfulError(`Unauthorized (401) from ${SERVICE}.`, {
-        hint: 'The OAuth access token is missing, invalid, or lacks the required scope (tag/rating/collection) — re-authenticate.',
-      });
-    }
-    if (res.status === 429 || res.status === 503) {
-      const retryAfter = Number(res.headers.get('retry-after'));
-      throw new RateLimitError(SERVICE, retryAfter > 0 ? retryAfter : undefined);
-    }
-    const text = await res.text();
-    if (!res.ok) {
-      throw new McpToolError(formatApiError(res.status, method, path, text, { service: SERVICE }));
-    }
-    return text;
   }
+}
+
+/** Parse a JSON body; an empty body (e.g. a 204-style answer) is `undefined`. */
+function parseJson<T>(text: string): T {
+  if (text.length === 0) return undefined as T;
+  return JSON.parse(text) as T;
+}
+
+/** The rate-limit error, carrying the upstream's delta-seconds `Retry-After` when it sent one. */
+function rateLimitError(retryAfter: string | null): RateLimitError {
+  const secs = Number(retryAfter);
+  return new RateLimitError(SERVICE, retryAfter && secs > 0 ? secs : undefined);
 }
 
 /**
