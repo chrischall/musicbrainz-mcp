@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.3](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.2...v1.2.3) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** adopt @chrischall/mcp-utils 2.12.0 createApiClient for MusicBrainz requests ([#122](https://github.com/chrischall/musicbrainz-mcp/issues/122)) ([dad7d2d](https://github.com/chrischall/musicbrainz-mcp/commit/dad7d2dd173c0a63a7dee1eaba4dd864dc9032c7))
+* **deps:** adopt @chrischall/mcp-utils 2.13.0 rawBody for MusicBrainz XML writes ([#125](https://github.com/chrischall/musicbrainz-mcp/issues/125)) ([8a2f2a4](https://github.com/chrischall/musicbrainz-mcp/commit/8a2f2a423381430cd67ce4277a408ed8c92de90f))
+* keep credentials and report edge_blocked on CDN/WAF blocks (mcp-utils 2.10.0) ([#120](https://github.com/chrischall/musicbrainz-mcp/issues/120)) ([ec4462b](https://github.com/chrischall/musicbrainz-mcp/commit/ec4462bad1d62695f147e2893bdcb11b8dbcd188))
+* keep write approvals valid across a hosted restart (mcp-utils 2.11.0) ([#121](https://github.com/chrischall/musicbrainz-mcp/issues/121)) ([becf217](https://github.com/chrischall/musicbrainz-mcp/commit/becf21724fd836689c68a1d0d66c6d42561a0069))
+* report CDN/WAF blocks as edge_blocked, not a rejected credential (mcp-utils 2.9.0) ([#118](https://github.com/chrischall/musicbrainz-mcp/issues/118)) ([9583acc](https://github.com/chrischall/musicbrainz-mcp/commit/9583acce14919c162441a2eaefde26de59052aa0))
+
 ## [1.2.2](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.1...v1.2.2) (2026-09-29)
 
 
