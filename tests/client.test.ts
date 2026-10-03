@@ -430,6 +430,18 @@ describe('MusicBrainzClient transport (fake timers)', () => {
     }
   });
 
+  it('sends exactly one Content-Type (the XML one) on a write, never a JSON default beside it', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
+      { match: '/ws/2/rating', responses: [jsonResponse(200, '<message><text>OK</text></message>')] },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
+    await client.write('POST', '/rating', { xmlBody: '<metadata/>' });
+    const w = calls.find((c) => c.url.includes('/ws/2/rating'))!;
+    const contentTypes = Object.entries(w.headers).filter(([k]) => k.toLowerCase() === 'content-type');
+    expect(contentTypes).toEqual([['Content-Type', 'application/xml; charset=utf-8']]);
+  });
+
   it('holds the 1 request/second limit across concurrent calls AND their retries', async () => {
     vi.useFakeTimers({ now: 0 });
     try {

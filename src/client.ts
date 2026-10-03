@@ -178,19 +178,12 @@ export class MusicBrainzClient {
         maxRetryAfterMs: MAX_RETRY_AFTER_MS,
       },
       sleep: this.sleep,
+      // The throttle sits at the fetch seam so every HTTP *attempt* (retries
+      // included) takes a 1.1s slot. The seam also captures `Retry-After`: the
+      // `onRateLimited` ctx only covers a final 429, and MusicBrainz's own
+      // rate limit is a 503, which surfaces as a plain ApiError without headers.
       fetchImpl: (async (url: string, init: RequestInit) => {
-        const res = await this.throttle(() =>
-          this.fetchImpl(
-            url,
-            opts.xmlBody === undefined
-              ? init
-              : {
-                  ...init,
-                  headers: { ...(init.headers as Record<string, string>), 'Content-Type': XML_CONTENT_TYPE },
-                  body: opts.xmlBody,
-                },
-          ),
-        );
+        const res = await this.throttle(() => this.fetchImpl(url, init));
         retryAfter = res.headers.get('retry-after');
         return res;
       }) as typeof fetch,
@@ -201,6 +194,7 @@ export class MusicBrainzClient {
       return await api.fetchHtml(method, path, {
         headers: { Accept: 'application/json' },
         ...(opts.query ? { query: opts.query } : {}),
+        ...(opts.xmlBody !== undefined ? { rawBody: opts.xmlBody, contentType: XML_CONTENT_TYPE } : {}),
       });
     } catch (err) {
       if (err instanceof McpToolError) throw err;
