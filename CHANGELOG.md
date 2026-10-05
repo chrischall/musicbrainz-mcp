@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.3...v1.2.4) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** require @chrischall/mcp-utils 2.14.0 and MCP SDK 2.3.0 ([#126](https://github.com/chrischall/musicbrainz-mcp/issues/126)) ([8ff23a4](https://github.com/chrischall/musicbrainz-mcp/commit/8ff23a4e2cc0d25a5469253187a52ef63a9a5257))
+
 ## [1.2.3](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.2...v1.2.3) (2026-10-03)
 
 
