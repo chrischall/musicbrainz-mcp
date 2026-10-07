@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.5](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.4...v1.2.5) (2026-10-07)
+
+
+### Bug Fixes
+
+* **deps:** bump @chrischall/mcp-utils to 2.15.0 for the MCP_CONFIRM_ELICITATION=off opt-out ([#133](https://github.com/chrischall/musicbrainz-mcp/issues/133)) ([78392f9](https://github.com/chrischall/musicbrainz-mcp/commit/78392f94645d0888cd69b2e77a3dfa7ab900b741))
+* **deps:** Bump dotenv ([#130](https://github.com/chrischall/musicbrainz-mcp/issues/130)) ([f784d03](https://github.com/chrischall/musicbrainz-mcp/commit/f784d031f5e212615e6aa420619b4cd5921319b3))
+
+
+### Documentation
+
+* document MCP_CONFIRM_ELICITATION ([#134](https://github.com/chrischall/musicbrainz-mcp/issues/134)) ([77e76c7](https://github.com/chrischall/musicbrainz-mcp/commit/77e76c7a06d5d755ef70cac2e35d3f72b342b3d3))
+
 ## [1.2.4](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.3...v1.2.4) (2026-10-05)
 
 
