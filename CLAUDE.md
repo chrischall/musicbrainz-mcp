@@ -56,7 +56,7 @@ MusicBrainz allows **at most 1 request/second** per source; exceeding it returns
 
 ## Writes are confirmation-gated
 
-Every mutating tool takes an optional `confirmToken` (`confirmTokenParam`) and gates `client.write` behind `requireConfirmationWithFallback(ctx, confirmationFromEnv({...}))` from `@chrischall/mcp-utils`. A client that supports elicitation gets a confirmation prompt. One that does not (default `MCP_CONFIRM_MODE=ask-user`) gets a two-phase flow: phase 1 makes **no** network call and returns `status: "confirmation-required"` with the `preview` (method, path, and the exact XML for tags/ratings) and a `confirmToken`; phase 2 repeats the call with that token and routes through `client.write`. The token is bound to the tool, the target MBID (the collection MBID for collections) and a hash of exactly what will be sent (method + path + XML), so a changed argument is refused as `DRAFT_CHANGED` and a replayed token as `TOKEN_REUSED`. `MCP_CONFIRM_MODE=refuse` refuses writes on clients that cannot be prompted. See `docs/MUSICBRAINZ-API.md` for the pinned write shapes:
+Every mutating tool takes an optional `confirmToken` (`confirmTokenParam`) and gates `client.write` behind `requireConfirmationWithFallback(ctx, confirmationFromEnv({...}))` from `@chrischall/mcp-utils`. A client that supports elicitation gets a confirmation prompt, unless `MCP_CONFIRM_ELICITATION=off`. One that does not (default `MCP_CONFIRM_MODE=ask-user`) gets a two-phase flow: phase 1 makes **no** network call and returns `status: "confirmation-required"` with the `preview` (method, path, and the exact XML for tags/ratings) and a `confirmToken`; phase 2 repeats the call with that token and routes through `client.write`. The token is bound to the tool, the target MBID (the collection MBID for collections) and a hash of exactly what will be sent (method + path + XML), so a changed argument is refused as `DRAFT_CHANGED` and a replayed token as `TOKEN_REUSED`. `MCP_CONFIRM_MODE=refuse` refuses writes on clients that cannot be prompted. See `docs/MUSICBRAINZ-API.md` for the pinned write shapes:
 - tags/ratings: `POST /ws/2/tag` / `/ws/2/rating` with mmd-2.0 XML.
 - collections: bodyless `PUT`/`DELETE /ws/2/collection/<mbid>/<entity-type>/<MBID>;<MBID>`.
 
@@ -70,6 +70,7 @@ MUSICBRAINZ_OAUTH_CLIENT_ID=...            # writes only
 MUSICBRAINZ_OAUTH_CLIENT_SECRET=...        # writes only
 MUSICBRAINZ_OAUTH_REFRESH_TOKEN=...        # writes only
 MCP_CONFIRM_MODE=ask-user                  # ask-user | auto | refuse — writes on clients without elicitation
+MCP_CONFIRM_ELICITATION=on                 # off = never prompt (client hangs on elicitation, e.g. opencode 2.0.x)
 MCP_CONFIRM_TTL_SECONDS=600                # confirmToken lifetime
 MCP_CONFIRM_SECRET=...                     # token signing key; default random per process
 ```
