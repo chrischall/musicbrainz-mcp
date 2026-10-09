@@ -27,7 +27,7 @@ export function registerCollectionTools(server: McpServer): void {
         readOnly: false,
         idempotent: true,
         openWorld: true,
-        destructive: false,
+        destructive: true,
       }),
       inputSchema: z.object({
         action: z
