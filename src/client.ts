@@ -12,6 +12,7 @@ import {
   createOAuth2Refresher,
   createCachedTokenSource,
   createThrottle,
+  currentCallSignal,
   type CachedTokenSource,
   type ReactiveTokenSource,
   type Throttle,
@@ -182,13 +183,23 @@ export class MusicBrainzClient {
         honorRetryAfter: true,
         maxRetryAfterMs: MAX_RETRY_AFTER_MS,
       },
-      sleep: this.sleep,
+      // The Retry-After wait ends the moment the caller cancels, rather than
+      // sleeping up to 30s for nobody and then queueing another attempt.
+      sleep: (ms) => cancellableSleep(this.sleep, ms, currentCallSignal()),
       // The throttle sits at the fetch seam so every HTTP *attempt* (retries
       // included) takes a 1.1s slot. The seam also captures `Retry-After`: the
       // `onRateLimited` ctx only covers a final 429, and MusicBrainz's own
       // rate limit is a 503, which surfaces as a plain ApiError without headers.
+      // A cancelled call (`init.signal` carries the caller's cancellation,
+      // folded in by createApiClient) never takes a slot: checked before it
+      // queues and again when its slot comes up, so it sends nothing and the
+      // calls behind it are not held up by it.
       fetchImpl: (async (url: string, init: RequestInit) => {
-        const res = await this.throttle(() => this.fetchImpl(url, init));
+        init.signal?.throwIfAborted();
+        const res = await this.throttle(() => {
+          init.signal?.throwIfAborted();
+          return this.fetchImpl(url, init);
+        });
         retryAfter = res.headers.get('retry-after');
         return res;
       }) as typeof fetch,
@@ -203,6 +214,9 @@ export class MusicBrainzClient {
       });
     } catch (err) {
       if (err instanceof McpToolError) throw err;
+      // The caller cancelled: surface its reason, not "unreachable".
+      const cancelled = currentCallSignal();
+      if (cancelled?.aborted) throw cancelled.reason;
       if (err instanceof ApiError) {
         // An exhausted 503 surfaces as a plain ApiError (only 429 has its own
         // hook); MusicBrainz uses 503 for its rate limit, so it is one too.
@@ -305,6 +319,26 @@ function isAccountRead(query: Query): boolean {
   const inc = query.inc;
   const parts = Array.isArray(inc) ? inc : typeof inc === 'string' ? inc.split(/[+ ]/) : [];
   return parts.some((p) => p.startsWith('user-'));
+}
+
+/** `sleep(ms)`, ended early (rejecting with the signal's reason) when `signal` aborts. */
+function cancellableSleep(sleep: (ms: number) => Promise<void>, ms: number, signal: AbortSignal | undefined): Promise<void> {
+  if (!signal) return sleep(ms);
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    sleep(ms).then(
+      () => {
+        signal.removeEventListener('abort', onAbort);
+        resolve();
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      },
+    );
+  });
 }
 
 /** Parse a JSON body; an empty body (e.g. a 204-style answer) is `undefined`. */

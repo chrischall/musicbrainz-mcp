@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { EdgeBlockedError, OAuth2RefreshError, RateLimitError, UnreachableError } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, OAuth2RefreshError, RateLimitError, UnreachableError, withCallSignal } from '@chrischall/mcp-utils';
 import { MusicBrainzClient, type Query } from '../src/client.js';
 
 interface Recorded {
@@ -559,5 +559,42 @@ describe('MusicBrainzClient transport (fake timers)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// fleet-audit#577: a call the client has cancelled must stop taking throttle
+// slots and sleeping out Retry-After for nobody — every queued call waits on it.
+describe('MusicBrainzClient cancellation', () => {
+  it('a call cancelled before it reaches the throttle sends nothing', async () => {
+    const { fetchImpl, calls } = mockFetch([{ match: '/ws/2/artist', responses: [jsonResponse(200, {})] }]);
+    const throttle = vi.fn(passThrough);
+    const client = new MusicBrainzClient({ fetchImpl, throttle, sleep: noSleep, now: () => 0, oauth: null });
+    const controller = new AbortController();
+    controller.abort(new Error('user cancelled'));
+    const err = await withCallSignal(controller.signal, () => client.get('/artist/x')).catch((e) => e);
+    expect(calls).toHaveLength(0);
+    expect(throttle).not.toHaveBeenCalled();
+    expect(err).not.toBeInstanceOf(UnreachableError);
+    expect(String(err.message)).toContain('user cancelled');
+  });
+
+  it('a cancellation during a Retry-After wait ends the wait and makes no retry', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: '/ws/2/release', responses: [jsonResponse(503, 'busy', { 'retry-after': '30' }), jsonResponse(200, {})] },
+    ]);
+    const sleeps: number[] = [];
+    // A sleep that never ends by itself: only the cancellation can end it.
+    const sleep = (ms: number) => {
+      sleeps.push(ms);
+      return new Promise<void>(() => {});
+    };
+    const client = new MusicBrainzClient({ fetchImpl, throttle: passThrough, sleep, now: () => 0, oauth: null });
+    const controller = new AbortController();
+    const pending = withCallSignal(controller.signal, () => client.get('/release/x')).catch((e) => e);
+    await vi.waitFor(() => expect(sleeps).toHaveLength(1));
+    controller.abort(new Error('user cancelled'));
+    const err = await pending;
+    expect(String(err.message)).toContain('user cancelled');
+    expect(calls).toHaveLength(1);
   });
 });
