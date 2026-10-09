@@ -27,7 +27,7 @@ export function registerCollectionTools(server: McpServer): void {
         readOnly: false,
         idempotent: true,
         openWorld: true,
-        destructive: false,
+        destructive: true,
       }),
       inputSchema: z.object({
         action: z
@@ -45,7 +45,8 @@ export function registerCollectionTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
     },
-    async ({ action, collection, entityType, mbids, confirmToken }, ctx) => {
+    async (args, ctx) => {
+      const { action, collection, entityType, mbids, confirmToken } = args;
       const method = action === 'add' ? 'PUT' : 'DELETE';
       const path = `/collection/${collection}/${entityType}/${mbids.join(';')}`;
       const effect = `${action} ${mbids.length} ${entityType} ${action === 'add' ? 'to' : 'from'} the collection`;
@@ -56,6 +57,9 @@ export function registerCollectionTools(server: McpServer): void {
           message: `Review and confirm: ${effect}.`,
           details: { action, collection, entityType, mbids: mbids.join(', ') },
           tool: 'musicbrainz_modify_collection',
+          // Bind both rails (elicitation acceptance and confirmToken) to these
+          // exact arguments; confirmationFromEnv drops confirmToken itself.
+          args,
           confirmToken,
           subject: () => ({
             target: collection,

@@ -260,3 +260,18 @@ describe('confirmation modes', () => {
     expect(write).not.toHaveBeenCalled();
   });
 });
+
+// fleet-audit#578: every write tool can remove the user's data (collection
+// remove → DELETE, rating 0 → removes the rating, tag vote withdraw → removes
+// the vote), so none may advertise itself as non-destructive.
+describe('annotations', () => {
+  it.each(['musicbrainz_submit_tags', 'musicbrainz_submit_rating', 'musicbrainz_modify_collection'])(
+    '%s is annotated destructive',
+    async (name) => {
+      const { tools } = await harness.client.listTools();
+      const tool = tools.find((t) => t.name === name);
+      expect(tool?.annotations?.destructiveHint).toBe(true);
+      expect(tool?.annotations?.readOnlyHint).toBe(false);
+    }
+  );
+});

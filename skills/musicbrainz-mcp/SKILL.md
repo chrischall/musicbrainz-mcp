@@ -28,7 +28,7 @@ Search to get an MBID, then lookup/browse for detail:
 
 ## Writes (OAuth, confirmation-gated)
 
-`musicbrainz_submit_tags`, `musicbrainz_submit_rating`, and `musicbrainz_modify_collection` modify the user's own MusicBrainz account. Each asks the user to confirm first: a confirmation prompt where the client supports one; otherwise the first call sends nothing and returns `status: "confirmation-required"` with a `preview` and a `confirmToken` — show the preview to the user and only repeat the same call with that `confirmToken` after they approve. A token works once, and changing any argument invalidates it (`DRAFT_CHANGED`: re-confirm the fresh preview). They require `MUSICBRAINZ_OAUTH_*` to be configured.
+`musicbrainz_submit_tags`, `musicbrainz_submit_rating`, and `musicbrainz_modify_collection` modify the user's own MusicBrainz account. Each asks the user to confirm first: a confirmation prompt where the client supports one (unless the server sets `MCP_CONFIRM_ELICITATION=off`); otherwise the first call sends nothing and returns `status: "confirmation-required"` with a `preview` and a `confirmToken` — show the preview to the user and only repeat the same call with that `confirmToken` after they approve. A token works once, and changing any argument invalidates it (`DRAFT_CHANGED`: re-confirm the fresh preview). They require `MUSICBRAINZ_OAUTH_*` to be configured.
 
 ## Response shape (`view`)
 

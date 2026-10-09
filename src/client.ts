@@ -12,7 +12,9 @@ import {
   createOAuth2Refresher,
   createCachedTokenSource,
   createThrottle,
+  currentCallSignal,
   type CachedTokenSource,
+  type ReactiveTokenSource,
   type Throttle,
 } from '@chrischall/mcp-utils';
 import { VERSION } from './version.js';
@@ -38,6 +40,10 @@ const RATE_STATUSES = [429, 503];
 // open for an hour.
 const MAX_RETRY_AFTER_MS = 30_000;
 const READ_401_HINT = 'The OAuth access token is missing, invalid, or lacks the required scope — re-authenticate.';
+// A read of the user's own data (user-* inc, a private collection) without
+// OAuth configured: nothing to re-authenticate, the server has no credentials.
+const ACCOUNT_READ_401_HINT =
+  'This read asks for your own MusicBrainz data (a user-* inc such as user-tags/user-ratings, or a private collection), which needs your account: set MUSICBRAINZ_OAUTH_CLIENT_ID, MUSICBRAINZ_OAUTH_CLIENT_SECRET, and MUSICBRAINZ_OAUTH_REFRESH_TOKEN.';
 const WRITE_401_HINT =
   'The OAuth access token is missing, invalid, or lacks the required scope (tag/rating/collection) — re-authenticate.';
 // Every write must carry `client=<appname>-<version>` (MusicBrainz requirement).
@@ -161,13 +167,13 @@ export class MusicBrainzClient {
     base: string,
     method: string,
     path: string,
-    opts: { query?: Query; token?: string; xmlBody?: string; unauthorizedHint: string },
+    opts: { query?: Query; auth?: ReactiveTokenSource; xmlBody?: string; unauthorizedHint: string },
   ): Promise<string> {
     let retryAfter: string | null = null;
     const api = createApiClient({
       baseUrl: base,
       serviceName: SERVICE,
-      getToken: () => opts.token,
+      ...(opts.auth ? { tokenManager: opts.auth } : {}),
       baseHeaders: { 'User-Agent': this.ua },
       timeout: REQUEST_TIMEOUT_MS,
       retry: {
@@ -177,13 +183,23 @@ export class MusicBrainzClient {
         honorRetryAfter: true,
         maxRetryAfterMs: MAX_RETRY_AFTER_MS,
       },
-      sleep: this.sleep,
+      // The Retry-After wait ends the moment the caller cancels, rather than
+      // sleeping up to 30s for nobody and then queueing another attempt.
+      sleep: (ms) => cancellableSleep(this.sleep, ms, currentCallSignal()),
       // The throttle sits at the fetch seam so every HTTP *attempt* (retries
       // included) takes a 1.1s slot. The seam also captures `Retry-After`: the
       // `onRateLimited` ctx only covers a final 429, and MusicBrainz's own
       // rate limit is a 503, which surfaces as a plain ApiError without headers.
+      // A cancelled call (`init.signal` carries the caller's cancellation,
+      // folded in by createApiClient) never takes a slot: checked before it
+      // queues and again when its slot comes up, so it sends nothing and the
+      // calls behind it are not held up by it.
       fetchImpl: (async (url: string, init: RequestInit) => {
-        const res = await this.throttle(() => this.fetchImpl(url, init));
+        init.signal?.throwIfAborted();
+        const res = await this.throttle(() => {
+          init.signal?.throwIfAborted();
+          return this.fetchImpl(url, init);
+        });
         retryAfter = res.headers.get('retry-after');
         return res;
       }) as typeof fetch,
@@ -198,6 +214,9 @@ export class MusicBrainzClient {
       });
     } catch (err) {
       if (err instanceof McpToolError) throw err;
+      // The caller cancelled: surface its reason, not "unreachable".
+      const cancelled = currentCallSignal();
+      if (cancelled?.aborted) throw cancelled.reason;
       if (err instanceof ApiError) {
         // An exhausted 503 surfaces as a plain ApiError (only 429 has its own
         // hook); MusicBrainz uses 503 for its rate limit, so it is one too.
@@ -209,11 +228,19 @@ export class MusicBrainzClient {
     }
   }
 
-  /** Read request against the /ws/2 web service. Always JSON; no auth. */
+  /**
+   * Read request against the /ws/2 web service. Always JSON. Anonymous, except
+   * a read of the user's own data (a `user-*` inc, or browsing by collection —
+   * private collections need the owner): that carries the OAuth bearer when
+   * OAuth is configured, and otherwise explains that it needs it.
+   */
   async get<T>(path: string, query: Query = {}): Promise<T> {
+    const account = isAccountRead(query);
+    const auth = account && this.tokenSource ? this.bearer(await this.accessToken()) : undefined;
     const text = await this.call(WS_BASE, 'GET', path, {
       query: { ...query, fmt: 'json' },
-      unauthorizedHint: READ_401_HINT,
+      ...(auth ? { auth } : {}),
+      unauthorizedHint: account && !auth ? ACCOUNT_READ_401_HINT : READ_401_HINT,
     });
     return parseJson<T>(text);
   }
@@ -241,6 +268,32 @@ export class MusicBrainzClient {
   }
 
   /**
+   * The bearer for an authenticated request, with one reactive 401-replay: a
+   * cached access token MusicBrainz has stopped accepting (revoked, re-granted,
+   * rotated early) is dropped and the request is sent once more with a freshly
+   * minted one. Without this the stale token stayed cached until its reported
+   * expiry (up to an hour) and every write failed with "re-authenticate" while
+   * the refresh token was still good. A second 401 is surfaced as the error.
+   */
+  private bearer(token: string): ReactiveTokenSource {
+    // `current` follows the re-mint, so a 429/503 retry after a replay reuses
+    // the fresh token instead of re-sending the rejected one.
+    let current = token;
+    let replayed = false;
+    return {
+      withAuth: async (send) => {
+        const res = await send(current);
+        if (res.status !== 401 || replayed) return res;
+        replayed = true;
+        await res.body?.cancel();
+        this.tokenSource!.invalidate();
+        current = await this.accessToken();
+        return send(current);
+      },
+    };
+  }
+
+  /**
    * OAuth-authenticated write against the /ws/2 web service. Attaches the bearer
    * token and the mandatory `client=` param centrally; `xmlBody` (when present)
    * is sent as `application/xml`. Collection PUT/DELETE pass no body. Returns the
@@ -248,14 +301,44 @@ export class MusicBrainzClient {
    * `<message><text>OK</text></message>`, not JSON, so we never JSON.parse it.
    */
   async write(method: 'POST' | 'PUT' | 'DELETE', path: string, opts: { query?: Query; xmlBody?: string } = {}): Promise<string> {
+    // Mint (or reuse) the token up front so a config or refresh failure
+    // surfaces as itself, before the request takes a throttle slot.
     const token = await this.accessToken();
     return this.call(WS_BASE, method, path, {
       query: { ...opts.query, client: CLIENT_PARAM },
-      token,
+      auth: this.bearer(token),
       ...(opts.xmlBody !== undefined ? { xmlBody: opts.xmlBody } : {}),
       unauthorizedHint: WRITE_401_HINT,
     });
   }
+}
+
+/** Whether a read asks for the user's own data: a `user-*` inc or a collection browse. */
+function isAccountRead(query: Query): boolean {
+  if (query.collection !== undefined) return true;
+  const inc = query.inc;
+  const parts = Array.isArray(inc) ? inc : typeof inc === 'string' ? inc.split(/[+ ]/) : [];
+  return parts.some((p) => p.startsWith('user-'));
+}
+
+/** `sleep(ms)`, ended early (rejecting with the signal's reason) when `signal` aborts. */
+function cancellableSleep(sleep: (ms: number) => Promise<void>, ms: number, signal: AbortSignal | undefined): Promise<void> {
+  if (!signal) return sleep(ms);
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    sleep(ms).then(
+      () => {
+        signal.removeEventListener('abort', onAbort);
+        resolve();
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      },
+    );
+  });
 }
 
 /** Parse a JSON body; an empty body (e.g. a 204-style answer) is `undefined`. */

@@ -27,7 +27,7 @@ export function registerRatingTools(server: McpServer): void {
         readOnly: false,
         idempotent: true,
         openWorld: true,
-        destructive: false,
+        destructive: true,
       }),
       inputSchema: z.object({
         entity: AnnotatableEntitySchema.describe('Entity type to rate'),
@@ -41,7 +41,8 @@ export function registerRatingTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
     },
-    async ({ entity, mbid, rating, confirmToken }, ctx) => {
+    async (args, ctx) => {
+      const { entity, mbid, rating, confirmToken } = args;
       const xml = buildRatingXml(entity, mbid, rating);
       const gate = await requireConfirmationWithFallback(
         ctx,
@@ -53,6 +54,9 @@ export function registerRatingTools(server: McpServer): void {
               : 'Review and confirm this rating on your MusicBrainz account:',
           details: { entity, mbid, rating },
           tool: 'musicbrainz_submit_rating',
+          // Bind both rails (elicitation acceptance and confirmToken) to these
+          // exact arguments; confirmationFromEnv drops confirmToken itself.
+          args,
           confirmToken,
           subject: () => ({
             target: mbid,
