@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.6](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.5...v1.2.6) (2026-10-09)
+
+
+### Bug Fixes
+
+* declare the plugin MCP config under the mcpServers key Claude Code reads ([#138](https://github.com/chrischall/musicbrainz-mcp/issues/138)) ([0006489](https://github.com/chrischall/musicbrainz-mcp/commit/0006489abd112bd3aee395d89e9358d12cbdc662))
+* **deps:** update @chrischall/mcp-utils to 3.0.0 ([#137](https://github.com/chrischall/musicbrainz-mcp/issues/137)) ([7f5fdb8](https://github.com/chrischall/musicbrainz-mcp/commit/7f5fdb82b54045ea08174e974850d2212e25c518))
+* resolve low-severity audit findings ([#135](https://github.com/chrischall/musicbrainz-mcp/issues/135)) ([187b05c](https://github.com/chrischall/musicbrainz-mcp/commit/187b05cb3946799666986292f0af07967ece605b))
+
 ## [1.2.5](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.4...v1.2.5) (2026-10-07)
 
 
