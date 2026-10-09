@@ -213,6 +213,9 @@ export class MusicBrainzClient {
         ...(opts.xmlBody !== undefined ? { rawBody: opts.xmlBody, contentType: XML_CONTENT_TYPE } : {}),
       });
     } catch (err) {
+      // Includes WriteOutcomeUnknownError (mcp-utils 3.0): a write that was sent
+      // but timed out or lost its connection may have landed, so it must not
+      // be flattened into a retry-safe UnreachableError below.
       if (err instanceof McpToolError) throw err;
       // The caller cancelled: surface its reason, not "unreachable".
       const cancelled = currentCallSignal();
@@ -223,7 +226,7 @@ export class MusicBrainzClient {
         if (RATE_STATUSES.includes(err.status)) throw rateLimitError(retryAfter);
         throw new McpToolError(err.message, { cause: err });
       }
-      // A timeout (RequestTimeoutError) or a network failure.
+      // A read timeout (RequestTimeoutError) or a network failure.
       throw new UnreachableError(SERVICE);
     }
   }
