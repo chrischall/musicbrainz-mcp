@@ -44,7 +44,8 @@ export function registerTagTools(server: McpServer): void {
         confirmToken: confirmTokenParam,
       }),
     },
-    async ({ entity, mbid, tags, vote, confirmToken }, ctx) => {
+    async (args, ctx) => {
+      const { entity, mbid, tags, vote, confirmToken } = args;
       const v: TagVote = vote ?? 'upvote';
       const xml = buildTagsXml(entity, mbid, tags, v);
       const gate = await requireConfirmationWithFallback(
@@ -54,6 +55,9 @@ export function registerTagTools(server: McpServer): void {
           message: `Review and confirm these tags (${v}) on your MusicBrainz account:`,
           details: { entity, mbid, tags: tags.join(', '), vote: v },
           tool: 'musicbrainz_submit_tags',
+          // Bind both rails (elicitation acceptance and confirmToken) to these
+          // exact arguments; confirmationFromEnv drops confirmToken itself.
+          args,
           confirmToken,
           subject: () => ({
             target: mbid,
