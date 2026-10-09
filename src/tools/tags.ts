@@ -55,6 +55,8 @@ export function registerTagTools(server: McpServer): void {
           message: `Review and confirm these tags (${v}) on your MusicBrainz account:`,
           details: { entity, mbid, tags: tags.join(', '), vote: v },
           tool: 'musicbrainz_submit_tags',
+          // Single-account server: the one OAuth refresh token in the env is the principal.
+          account: undefined,
           // Bind both rails (elicitation acceptance and confirmToken) to these
           // exact arguments; confirmationFromEnv drops confirmToken itself.
           args,

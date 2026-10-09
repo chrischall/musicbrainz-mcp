@@ -57,6 +57,8 @@ export function registerCollectionTools(server: McpServer): void {
           message: `Review and confirm: ${effect}.`,
           details: { action, collection, entityType, mbids: mbids.join(', ') },
           tool: 'musicbrainz_modify_collection',
+          // Single-account server: the one OAuth refresh token in the env is the principal.
+          account: undefined,
           // Bind both rails (elicitation acceptance and confirmToken) to these
           // exact arguments; confirmationFromEnv drops confirmToken itself.
           args,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { EdgeBlockedError, OAuth2RefreshError, RateLimitError, UnreachableError, withCallSignal } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, OAuth2RefreshError, RateLimitError, UnreachableError, withCallSignal, WriteOutcomeUnknownError } from '@chrischall/mcp-utils';
 import { MusicBrainzClient, type Query } from '../src/client.js';
 
 interface Recorded {
@@ -360,6 +360,32 @@ describe('MusicBrainzClient transport (fake timers)', () => {
       const err = await pending;
       expect(err).toBeInstanceOf(UnreachableError);
       expect(String(err.message)).toMatch(/MusicBrainz unreachable/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a timed-out write surfaces WriteOutcomeUnknownError, not a retry-safe UnreachableError', async () => {
+    vi.useFakeTimers();
+    try {
+      const hung = hangingFetch();
+      const fetchImpl = (async (url: string | URL, init?: RequestInit) =>
+        String(url).includes('oauth2/token')
+          ? jsonResponse(200, { access_token: 'AT', expires_in: 3600 })
+          : hung.fetchImpl(url, init)) as unknown as typeof fetch;
+      const client = new MusicBrainzClient({
+        fetchImpl,
+        throttle: passThrough,
+        oauth: { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' },
+      });
+      const pending = client.write('POST', '/rating', { xmlBody: '<a/>' }).catch((e) => e);
+      await vi.advanceTimersByTimeAsync(20_000);
+      const err = await pending;
+      expect(err).toBeInstanceOf(WriteOutcomeUnknownError);
+      expect(err).not.toBeInstanceOf(UnreachableError);
+      expect(err.outcomeUnknown).toBe(true);
+      expect(err.retrySafe).toBe(false);
+      expect(hung.calls).toHaveLength(1);
     } finally {
       vi.useRealTimers();
     }

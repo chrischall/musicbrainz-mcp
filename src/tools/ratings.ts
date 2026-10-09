@@ -54,6 +54,8 @@ export function registerRatingTools(server: McpServer): void {
               : 'Review and confirm this rating on your MusicBrainz account:',
           details: { entity, mbid, rating },
           tool: 'musicbrainz_submit_rating',
+          // Single-account server: the one OAuth refresh token in the env is the principal.
+          account: undefined,
           // Bind both rails (elicitation acceptance and confirmToken) to these
           // exact arguments; confirmationFromEnv drops confirmToken itself.
           args,
