@@ -14,7 +14,7 @@ export function registerLookupTools(server: McpServer): void {
       description:
         'Fetch a single MusicBrainz entity (artist, release, recording, release-group, label, work, area, place, event, instrument, series, genre, url) by its MBID. ' +
         'Use `inc` to pull linked sub-entities and relationships, e.g. inc: ["releases","release-groups"] on an artist, or ["recordings","labels"] on a release, or ["artist-credits","url-rels"] on most entities. ' +
-        'Read-only.' +
+        'Your own tags/ratings (inc: ["user-tags"], ["user-ratings"], …) need OAuth (MUSICBRAINZ_OAUTH_*). Read-only.' +
         ATTRIBUTION_NOTE,
       annotations: toolAnnotations({
         title: 'Look up a MusicBrainz entity by MBID',

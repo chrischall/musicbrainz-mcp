@@ -31,7 +31,7 @@ export function registerBrowseTools(server: McpServer): void {
       title: 'Browse MusicBrainz entities linked to another',
       description:
         'List all entities of one type directly linked to a given entity — e.g. every release by an artist ' +
-        '(entity: "release", linkedBy: "artist", mbid: <artist>), recordings on a release, releases in a collection, or events at a place. ' +
+        '(entity: "release", linkedBy: "artist", mbid: <artist>), recordings on a release, releases in a collection (a private collection needs OAuth: MUSICBRAINZ_OAUTH_*), or events at a place. ' +
         'This is the complete, paged set for a relationship (unlike search, which ranks fuzzy matches). ' +
         'Use `inc` for extra detail and limit/offset to page (max 100/page). Read-only.' +
         ATTRIBUTION_NOTE,

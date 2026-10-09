@@ -116,6 +116,57 @@ describe('MusicBrainzClient.get', () => {
   });
 });
 
+// fleet-audit#1064: user-* incs and private-collection browses need the
+// account's bearer; with OAuth configured the read path must send it.
+describe('MusicBrainzClient.get — account reads', () => {
+  const OAUTH = { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' };
+  const COLL = '5b11f4ce-a62d-471e-81fc-a69a8278c7da';
+
+  it('sends the bearer on a lookup whose inc asks for user-* data', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
+      { match: '/ws/2/recording/', responses: [jsonResponse(200, { 'user-tags': [] })] },
+    ]);
+    const client = makeClient(fetchImpl, OAUTH);
+    await client.get('/recording/abc', { inc: 'tags+user-tags' });
+    const read = calls.find((c) => c.url.includes('/ws/2/recording/'))!;
+    expect(read.headers['Authorization']).toBe('Bearer AT');
+    expect(read.url).toContain('inc=tags%2Buser-tags');
+  });
+
+  it('sends the bearer when browsing a collection', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
+      { match: '/ws/2/release', responses: [jsonResponse(200, { releases: [] })] },
+    ]);
+    const client = makeClient(fetchImpl, OAUTH);
+    await client.get('/release', { collection: COLL, limit: 5 });
+    expect(calls.find((c) => c.url.includes('/ws/2/release'))!.headers['Authorization']).toBe('Bearer AT');
+  });
+
+  it('keeps ordinary reads anonymous even when OAuth is configured (no token minted)', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: '/ws/2/artist/', responses: [jsonResponse(200, { name: 'x' })] },
+    ]);
+    const client = makeClient(fetchImpl, OAUTH);
+    await client.get('/artist/abc', { inc: 'tags+ratings' });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].headers['Authorization']).toBeUndefined();
+  });
+
+  it('without OAuth, a 401 on an account read says to configure OAuth, not to re-authenticate', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      { match: '/ws/2/recording/', responses: [jsonResponse(401, { error: 'auth' }, { 'content-type': 'application/json' })] },
+    ]);
+    const client = makeClient(fetchImpl, null);
+    const err = await client.get('/recording/abc', { inc: 'user-ratings' }).catch((e) => e);
+    expect(calls[0].headers['Authorization']).toBeUndefined();
+    expect(String(err.message)).toBe('Unauthorized (401) from MusicBrainz.');
+    expect(err.hint).toMatch(/MUSICBRAINZ_OAUTH_/);
+    expect(err.hint).not.toMatch(/re-authenticate/);
+  });
+});
+
 describe('MusicBrainzClient.coverArt', () => {
   it('fetches the Cover Art Archive host', async () => {
     const { fetchImpl, calls } = mockFetch([{ match: 'coverartarchive.org/release/', responses: [jsonResponse(200, { images: [] })] }]);

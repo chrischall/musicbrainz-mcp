@@ -39,6 +39,10 @@ const RATE_STATUSES = [429, 503];
 // open for an hour.
 const MAX_RETRY_AFTER_MS = 30_000;
 const READ_401_HINT = 'The OAuth access token is missing, invalid, or lacks the required scope — re-authenticate.';
+// A read of the user's own data (user-* inc, a private collection) without
+// OAuth configured: nothing to re-authenticate, the server has no credentials.
+const ACCOUNT_READ_401_HINT =
+  'This read asks for your own MusicBrainz data (a user-* inc such as user-tags/user-ratings, or a private collection), which needs your account: set MUSICBRAINZ_OAUTH_CLIENT_ID, MUSICBRAINZ_OAUTH_CLIENT_SECRET, and MUSICBRAINZ_OAUTH_REFRESH_TOKEN.';
 const WRITE_401_HINT =
   'The OAuth access token is missing, invalid, or lacks the required scope (tag/rating/collection) — re-authenticate.';
 // Every write must carry `client=<appname>-<version>` (MusicBrainz requirement).
@@ -210,11 +214,19 @@ export class MusicBrainzClient {
     }
   }
 
-  /** Read request against the /ws/2 web service. Always JSON; no auth. */
+  /**
+   * Read request against the /ws/2 web service. Always JSON. Anonymous, except
+   * a read of the user's own data (a `user-*` inc, or browsing by collection —
+   * private collections need the owner): that carries the OAuth bearer when
+   * OAuth is configured, and otherwise explains that it needs it.
+   */
   async get<T>(path: string, query: Query = {}): Promise<T> {
+    const account = isAccountRead(query);
+    const auth = account && this.tokenSource ? this.bearer(await this.accessToken()) : undefined;
     const text = await this.call(WS_BASE, 'GET', path, {
       query: { ...query, fmt: 'json' },
-      unauthorizedHint: READ_401_HINT,
+      ...(auth ? { auth } : {}),
+      unauthorizedHint: account && !auth ? ACCOUNT_READ_401_HINT : READ_401_HINT,
     });
     return parseJson<T>(text);
   }
@@ -285,6 +297,14 @@ export class MusicBrainzClient {
       unauthorizedHint: WRITE_401_HINT,
     });
   }
+}
+
+/** Whether a read asks for the user's own data: a `user-*` inc or a collection browse. */
+function isAccountRead(query: Query): boolean {
+  if (query.collection !== undefined) return true;
+  const inc = query.inc;
+  const parts = Array.isArray(inc) ? inc : typeof inc === 'string' ? inc.split(/[+ ]/) : [];
+  return parts.some((p) => p.startsWith('user-'));
 }
 
 /** Parse a JSON body; an empty body (e.g. a 204-style answer) is `undefined`. */

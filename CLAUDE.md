@@ -50,7 +50,7 @@ MusicBrainz allows **at most 1 request/second** per source; exceeding it returns
 
 ## Auth & client
 
-- **Reads need no auth.** `client.get` issues a throttled `GET … &fmt=json` with a descriptive `User-Agent` (MusicBrainz blocks generic/empty UAs).
+- **Reads need no auth.** `client.get` issues a throttled `GET … &fmt=json` with a descriptive `User-Agent` (MusicBrainz blocks generic/empty UAs). The exception is the user's own data — a `user-*` inc (`user-tags`, `user-ratings`, …) or a browse by `collection`: those carry the OAuth bearer when it is configured (same 401-replay as writes), and without OAuth a 401 explains that the read needs `MUSICBRAINZ_OAUTH_*` rather than saying to re-authenticate.
 - **Writes use OAuth2.** `client.write` attaches a Bearer token (via `createOAuth2Refresher` from `@chrischall/mcp-utils`, cached with expiry; a 401 drops the cached token and replays the write once with a freshly minted one) plus the mandatory `client=musicbrainz-mcp-<version>` param, and posts `Content-Type: application/xml; charset=utf-8`. It returns the **raw** response body — MusicBrainz answers writes with an XML `<message><text>OK</text></message>`, not JSON, so we never `JSON.parse` it.
 - **Deferred-config-error pattern (OAuth only):** the constructor reads `MUSICBRAINZ_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN`; if any is missing it stores a write-side `configError` instead of throwing. The server boots and serves `tools/list` regardless; the error only surfaces on the first write call. (Reads never have a config error.)
 
