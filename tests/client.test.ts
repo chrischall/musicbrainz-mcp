@@ -387,15 +387,55 @@ describe('MusicBrainzClient transport (fake timers)', () => {
     await expect(client.get('/artist/x')).rejects.toThrow('Unauthorized (401) from MusicBrainz.');
   });
 
-  it('maps a 401 on a write to the re-authenticate error with the scope hint', async () => {
-    const { fetchImpl } = mockFetch([
-      { match: 'oauth2/token', responses: [jsonResponse(200, { access_token: 'AT', expires_in: 3600 })] },
-      { match: '/ws/2/tag', responses: [jsonResponse(401, { error: 'nope' }, { 'content-type': 'application/json' })] },
+  it('maps a 401 on a write to the re-authenticate error with the scope hint (after one re-mint)', async () => {
+    const unauthorized = () => jsonResponse(401, { error: 'nope' }, { 'content-type': 'application/json' });
+    const { fetchImpl, calls } = mockFetch([
+      {
+        match: 'oauth2/token',
+        responses: [
+          jsonResponse(200, { access_token: 'AT', expires_in: 3600 }),
+          jsonResponse(200, { access_token: 'AT2', expires_in: 3600 }),
+        ],
+      },
+      { match: '/ws/2/tag', responses: [unauthorized(), unauthorized()] },
     ]);
     const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
     const err = await client.write('POST', '/tag', { xmlBody: '<x/>' }).catch((e) => e);
     expect(String(err.message)).toBe('Unauthorized (401) from MusicBrainz.');
     expect(err.hint).toMatch(/tag\/rating\/collection/);
+    // One replay only — a second 401 is surfaced, not looped on.
+    expect(calls.filter((c) => c.url.includes('/ws/2/tag'))).toHaveLength(2);
+  });
+
+  // fleet-audit#575: a cached access token that MusicBrainz has revoked early
+  // must not keep every write failing until it would have expired.
+  it('drops the cached token on a write 401 and replays once with a freshly minted one', async () => {
+    const { fetchImpl, calls } = mockFetch([
+      {
+        match: 'oauth2/token',
+        responses: [
+          jsonResponse(200, { access_token: 'STALE', expires_in: 3600 }),
+          jsonResponse(200, { access_token: 'FRESH', expires_in: 3600 }),
+        ],
+      },
+      {
+        match: '/ws/2/tag',
+        responses: [
+          jsonResponse(401, { error: 'revoked' }, { 'content-type': 'application/json' }),
+          jsonResponse(200, '<message><text>OK</text></message>'),
+          jsonResponse(200, '<message><text>OK</text></message>'),
+        ],
+      },
+    ]);
+    const client = makeClient(fetchImpl, { clientId: 'cid', clientSecret: 'sec', refreshToken: 'rt' });
+    await expect(client.write('POST', '/tag', { xmlBody: '<x/>' })).resolves.toBe('<message><text>OK</text></message>');
+    const tagCalls = calls.filter((c) => c.url.includes('/ws/2/tag'));
+    expect(tagCalls.map((c) => c.headers['Authorization'])).toEqual(['Bearer STALE', 'Bearer FRESH']);
+    expect(tagCalls[1].body).toBe('<x/>');
+    // The fresh token is what is cached now: the next write needs no re-mint.
+    await client.write('POST', '/tag', { xmlBody: '<x/>' });
+    expect(calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(2);
+    expect(calls.filter((c) => c.url.includes('/ws/2/tag')).at(-1)!.headers['Authorization']).toBe('Bearer FRESH');
   });
 
   it('formats a non-2xx write as an McpToolError naming method + path (no query string)', async () => {

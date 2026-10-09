@@ -13,6 +13,7 @@ import {
   createCachedTokenSource,
   createThrottle,
   type CachedTokenSource,
+  type ReactiveTokenSource,
   type Throttle,
 } from '@chrischall/mcp-utils';
 import { VERSION } from './version.js';
@@ -161,13 +162,13 @@ export class MusicBrainzClient {
     base: string,
     method: string,
     path: string,
-    opts: { query?: Query; token?: string; xmlBody?: string; unauthorizedHint: string },
+    opts: { query?: Query; auth?: ReactiveTokenSource; xmlBody?: string; unauthorizedHint: string },
   ): Promise<string> {
     let retryAfter: string | null = null;
     const api = createApiClient({
       baseUrl: base,
       serviceName: SERVICE,
-      getToken: () => opts.token,
+      ...(opts.auth ? { tokenManager: opts.auth } : {}),
       baseHeaders: { 'User-Agent': this.ua },
       timeout: REQUEST_TIMEOUT_MS,
       retry: {
@@ -241,6 +242,32 @@ export class MusicBrainzClient {
   }
 
   /**
+   * The bearer for an authenticated request, with one reactive 401-replay: a
+   * cached access token MusicBrainz has stopped accepting (revoked, re-granted,
+   * rotated early) is dropped and the request is sent once more with a freshly
+   * minted one. Without this the stale token stayed cached until its reported
+   * expiry (up to an hour) and every write failed with "re-authenticate" while
+   * the refresh token was still good. A second 401 is surfaced as the error.
+   */
+  private bearer(token: string): ReactiveTokenSource {
+    // `current` follows the re-mint, so a 429/503 retry after a replay reuses
+    // the fresh token instead of re-sending the rejected one.
+    let current = token;
+    let replayed = false;
+    return {
+      withAuth: async (send) => {
+        const res = await send(current);
+        if (res.status !== 401 || replayed) return res;
+        replayed = true;
+        await res.body?.cancel();
+        this.tokenSource!.invalidate();
+        current = await this.accessToken();
+        return send(current);
+      },
+    };
+  }
+
+  /**
    * OAuth-authenticated write against the /ws/2 web service. Attaches the bearer
    * token and the mandatory `client=` param centrally; `xmlBody` (when present)
    * is sent as `application/xml`. Collection PUT/DELETE pass no body. Returns the
@@ -248,10 +275,12 @@ export class MusicBrainzClient {
    * `<message><text>OK</text></message>`, not JSON, so we never JSON.parse it.
    */
   async write(method: 'POST' | 'PUT' | 'DELETE', path: string, opts: { query?: Query; xmlBody?: string } = {}): Promise<string> {
+    // Mint (or reuse) the token up front so a config or refresh failure
+    // surfaces as itself, before the request takes a throttle slot.
     const token = await this.accessToken();
     return this.call(WS_BASE, method, path, {
       query: { ...opts.query, client: CLIENT_PARAM },
-      token,
+      auth: this.bearer(token),
       ...(opts.xmlBody !== undefined ? { xmlBody: opts.xmlBody } : {}),
       unauthorizedHint: WRITE_401_HINT,
     });
