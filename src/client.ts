@@ -167,7 +167,7 @@ export class MusicBrainzClient {
     base: string,
     method: string,
     path: string,
-    opts: { query?: Query; auth?: ReactiveTokenSource; xmlBody?: string; unauthorizedHint: string },
+    opts: { query?: Query; auth?: ReactiveTokenSource; xmlBody?: string; unauthorizedHint: string; redirect?: 'follow' },
   ): Promise<string> {
     let retryAfter: string | null = null;
     const api = createApiClient({
@@ -176,6 +176,7 @@ export class MusicBrainzClient {
       ...(opts.auth ? { tokenManager: opts.auth } : {}),
       baseHeaders: { 'User-Agent': this.ua },
       timeout: REQUEST_TIMEOUT_MS,
+      ...(opts.redirect ? { redirect: opts.redirect } : {}),
       retry: {
         count: MAX_RATE_RETRIES,
         delayMs: MIN_INTERVAL_MS,
@@ -253,7 +254,12 @@ export class MusicBrainzClient {
     const path = `/${entity}/${encodeURIComponent(mbid)}`;
     let text: string;
     try {
-      text = await this.call(CAA_BASE, 'GET', path, { unauthorizedHint: READ_401_HINT });
+      // coverartarchive.org answers with a cross-origin 307 to
+      // archive.org/download/mbid-…/index.json. Ask for that hop to be
+      // followed explicitly, so a stricter shared-client redirect default
+      // (e.g. 'same-origin') can never silently break this tool. Anonymous
+      // read: no credential travels across the hop.
+      text = await this.call(CAA_BASE, 'GET', path, { unauthorizedHint: READ_401_HINT, redirect: 'follow' });
     } catch (err) {
       if (err instanceof McpToolError && err.cause instanceof ApiError && err.cause.status === 404) {
         throw createHelpfulError(`No cover art found for ${entity} ${mbid}.`, {
