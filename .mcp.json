@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "musicbrainz": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "command": "npx",
+      "args": [
+        "-y",
+        "musicbrainz-mcp"
+      ],
       "env": {
         "MUSICBRAINZ_USER_AGENT": "${MUSICBRAINZ_USER_AGENT}",
         "MUSICBRAINZ_OAUTH_CLIENT_ID": "${MUSICBRAINZ_OAUTH_CLIENT_ID}",
