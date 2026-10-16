@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.7](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.6...v1.2.7) (2026-10-16)
+
+
+### Bug Fixes
+
+* **cover-art:** follow the Cover Art Archive redirect explicitly; mcp-utils 3.0.3 ([#142](https://github.com/chrischall/musicbrainz-mcp/issues/142)) ([e7eaa54](https://github.com/chrischall/musicbrainz-mcp/commit/e7eaa54d257c72f3ce15e182c63ee7cf793f2927))
+* **deps:** Bump the production-dependencies group with 4 updates ([#139](https://github.com/chrischall/musicbrainz-mcp/issues/139)) ([08d99d7](https://github.com/chrischall/musicbrainz-mcp/commit/08d99d7406d6ab4463e1058bf79c6b44ee1cd597))
+* **plugin:** launch the published package so marketplace installs start ([#143](https://github.com/chrischall/musicbrainz-mcp/issues/143)) ([2c890ad](https://github.com/chrischall/musicbrainz-mcp/commit/2c890adb6e1174d70f2ee3c16368636f2d61a3da))
+
 ## [1.2.6](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.5...v1.2.6) (2026-10-09)
 
 
