@@ -175,6 +175,33 @@ describe('MusicBrainzClient.coverArt', () => {
     expect(calls[0].url).toBe('https://coverartarchive.org/release/abc');
   });
 
+  // coverartarchive.org answers a release lookup with a cross-origin
+  // `307 Location: https://archive.org/download/mbid-…/index.json`. The tool
+  // only works if that hop is followed, so the client must ask for it
+  // explicitly rather than inherit whatever redirect default the shared
+  // client has. This mock behaves like fetch: it follows the 307 only when
+  // `init.redirect` is 'follow', and otherwise hands the 3xx back.
+  it('follows the Cover Art Archive cross-origin 307 to archive.org', async () => {
+    const calls: { url: string; redirect: RequestRedirect | undefined }[] = [];
+    const archive = 'https://archive.org/download/mbid-abc/index.json';
+    const fetchImpl = (async (url: string | URL, init?: RequestInit) => {
+      const u = String(url);
+      calls.push({ url: u, redirect: init?.redirect });
+      if (u === 'https://coverartarchive.org/release/abc') {
+        if (init?.redirect !== 'follow') {
+          return new Response(null, { status: 307, headers: { location: archive } });
+        }
+        return jsonResponse(200, { images: [{ id: 1, image: 'https://archive.org/x.jpg' }] });
+      }
+      throw new Error(`no mock response for ${u}`);
+    }) as unknown as typeof fetch;
+    const client = makeClient(fetchImpl);
+    const data = await client.coverArt<{ images: { id: number }[] }>('release', 'abc');
+    expect(data.images[0].id).toBe(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].redirect).toBe('follow');
+  });
+
   it('gives a helpful error on 404 (no art)', async () => {
     const { fetchImpl } = mockFetch([{ match: 'coverartarchive.org/release-group/', responses: [jsonResponse(404, '')] }]);
     const client = makeClient(fetchImpl);
