@@ -32,3 +32,14 @@ egress:
     # solely in a URL this server BUILDS and returns are excluded.
     - coverartarchive.org
     - musicbrainz.org
+examples:
+  - prompt: >-
+      List every studio album Radiohead has released, in order, with the year
+      each came out.
+    note: Searches for the artist, then browses its release groups.
+  - prompt: >-
+      Show me the front cover art for Fleetwood Mac's Rumours.
+    note: Finds the release group, then fetches Cover Art Archive images.
+  - prompt: >-
+      Who wrote the song "Hallelujah", and which artists have recorded it?
+    note: Looks up the work with its writer and recording relationships.
