@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.8](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.7...v1.2.8) (2026-10-20)
+
+
+### Bug Fixes
+
+* **deps:** Bump the production-dependencies group with 3 updates ([#149](https://github.com/chrischall/musicbrainz-mcp/issues/149)) ([8784331](https://github.com/chrischall/musicbrainz-mcp/commit/87843315c3eb47112cedeaca45e721b98b4c2d21))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#146](https://github.com/chrischall/musicbrainz-mcp/issues/146)) ([56d9278](https://github.com/chrischall/musicbrainz-mcp/commit/56d92782295a0fe1f8893014aaa2157ba32105f4))
+
 ## [1.2.7](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.6...v1.2.7) (2026-10-16)
 
 
