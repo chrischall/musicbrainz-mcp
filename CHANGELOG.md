@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.7...v1.3.0) (2026-11-04)
+
+
+### Features
+
+* context-group hints, lookup and change intents with spoken aliases ([#154](https://github.com/chrischall/musicbrainz-mcp/issues/154)) ([e4c6919](https://github.com/chrischall/musicbrainz-mcp/commit/e4c6919bf036c1294a9bcb59a7e484d98fd69b1b))
+
+
+### Bug Fixes
+
+* **deps:** Bump @chrischall/mcp-utils ([#153](https://github.com/chrischall/musicbrainz-mcp/issues/153)) ([d3f9920](https://github.com/chrischall/musicbrainz-mcp/commit/d3f9920292093c93b46057ef54812654660f9045))
+* **deps:** Bump the production-dependencies group with 3 updates ([#149](https://github.com/chrischall/musicbrainz-mcp/issues/149)) ([8784331](https://github.com/chrischall/musicbrainz-mcp/commit/87843315c3eb47112cedeaca45e721b98b4c2d21))
+* **deps:** Bump the production-dependencies group with 3 updates ([#151](https://github.com/chrischall/musicbrainz-mcp/issues/151)) ([e1e0522](https://github.com/chrischall/musicbrainz-mcp/commit/e1e05226cb2f5157d327d5c908dfcc5508f426d8))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#146](https://github.com/chrischall/musicbrainz-mcp/issues/146)) ([56d9278](https://github.com/chrischall/musicbrainz-mcp/commit/56d92782295a0fe1f8893014aaa2157ba32105f4))
+
 ## [1.2.7](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.6...v1.2.7) (2026-10-16)
 
 
