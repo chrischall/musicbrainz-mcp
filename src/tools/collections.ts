@@ -10,6 +10,7 @@ import {
 import { client } from '../client.js';
 import { CollectableEntityTypeSchema, MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { COLLECTION_META } from './hints.js';
 
 export function registerCollectionTools(server: McpServer): void {
   server.registerTool(
@@ -29,6 +30,7 @@ export function registerCollectionTools(server: McpServer): void {
         openWorld: true,
         destructive: true,
       }),
+      _meta: COLLECTION_META,
       inputSchema: z.object({
         action: z
           .enum(['add', 'remove'])

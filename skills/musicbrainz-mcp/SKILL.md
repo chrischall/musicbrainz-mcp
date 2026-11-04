@@ -83,6 +83,21 @@ The other five tools take no `view`, for three different reasons:
   confirmation preview, or `{submitted, …}`): nothing to strip and everything
   to keep.
 
+## In context groups
+
+On a host that groups MCPs by context (mcp-host's context groups), this server
+sits in the **family** group. It carries `lookup` hints on its reads (search,
+lookup, browse, resolve, cover art) and `change` hints on its three OAuth
+writes, with the words people say ("album", "artist", "song", "album art",
+"rate", "my collection") as aliases.
+
+It has **no canonical read and no subject**: MusicBrainz is a music
+encyclopedia, so nothing in it answers "what's new", "what's due" or "what's
+on" for a person, and it has no listable set of people or accounts to fan out
+over. A compound family ask ("what's on this weekend, and who sang that song
+from the party?") reaches it only for the second half, as an ordinary lookup.
+It needs no browser, so it never answers "needs your browser open".
+
 ## Notes
 
 - MusicBrainz limits clients to ~1 request/second; the server paces itself, so a big browse may take a few seconds — that's expected, not an error.

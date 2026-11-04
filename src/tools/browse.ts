@@ -5,6 +5,7 @@ import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { CoreEntitySchema, MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { MUSIC_LOOKUP_META } from './hints.js';
 
 // Common entities you can browse *by* (the linking relationship). MusicBrainz
 // validates the actual combination; this list drives the schema + a good error.
@@ -41,6 +42,7 @@ export function registerBrowseTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
+      _meta: MUSIC_LOOKUP_META,
       inputSchema: z.object({
         view: viewArg(),
         entity: CoreEntitySchema.describe('Result entity type to list'),

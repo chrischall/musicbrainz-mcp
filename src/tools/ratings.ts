@@ -11,6 +11,7 @@ import { client } from '../client.js';
 import { AnnotatableEntitySchema, MbidSchema } from '../entities.js';
 import { buildRatingXml } from '../xml.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { RATING_META } from './hints.js';
 
 export function registerRatingTools(server: McpServer): void {
   server.registerTool(
@@ -29,6 +30,7 @@ export function registerRatingTools(server: McpServer): void {
         openWorld: true,
         destructive: true,
       }),
+      _meta: RATING_META,
       inputSchema: z.object({
         entity: AnnotatableEntitySchema.describe('Entity type to rate'),
         mbid: MbidSchema.describe('MBID of the entity to rate'),

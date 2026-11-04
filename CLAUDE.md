@@ -40,6 +40,7 @@ src/
     tags.ts         # musicbrainz_submit_tags (OAuth, confirmation-gated)
     ratings.ts      # musicbrainz_submit_rating (OAuth, confirmation-gated)
     collections.ts  # musicbrainz_modify_collection (OAuth, confirmation-gated)
+    hints.ts        # _meta.mint context-group hints (family; lookup reads, change writes, no canonical)
 ```
 
 Each tool file exports `register<Domain>Tools(server)` calling `server.registerTool(name, { description, annotations, inputSchema }, handler)` and returns results via `textResult(...)`. `index.ts` wires them through `runMcp`.
