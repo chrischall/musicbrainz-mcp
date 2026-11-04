@@ -5,6 +5,7 @@ import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { SearchableEntitySchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { MUSIC_LOOKUP_META } from './hints.js';
 
 export function registerSearchTools(server: McpServer): void {
   server.registerTool(
@@ -23,6 +24,7 @@ export function registerSearchTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
+      _meta: MUSIC_LOOKUP_META,
       inputSchema: z.object({
         view: viewArg(),
         entity: SearchableEntitySchema.describe('Entity type to search'),

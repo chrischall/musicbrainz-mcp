@@ -4,6 +4,7 @@ import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import { client } from '../client.js';
 import { MbidSchema } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { COVER_ART_META } from './hints.js';
 
 // NO `view` on this tool, deliberately. Its product IS the image URLs: compact
 // strips `images`/`thumbnails`, which here does not shrink the response, it
@@ -25,6 +26,7 @@ export function registerCoverArtTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
+      _meta: COVER_ART_META,
       inputSchema: z.object({
         entity: z
           .enum(['release', 'release-group'])

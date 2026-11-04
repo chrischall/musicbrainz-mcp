@@ -11,6 +11,7 @@ import { client } from '../client.js';
 import { AnnotatableEntitySchema, MbidSchema } from '../entities.js';
 import { buildTagsXml, type TagVote } from '../xml.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { TAGS_META } from './hints.js';
 
 export function registerTagTools(server: McpServer): void {
   server.registerTool(
@@ -29,6 +30,7 @@ export function registerTagTools(server: McpServer): void {
         openWorld: true,
         destructive: true,
       }),
+      _meta: TAGS_META,
       inputSchema: z.object({
         entity: AnnotatableEntitySchema.describe('Entity type to tag'),
         mbid: MbidSchema.describe('MBID of the entity to tag'),

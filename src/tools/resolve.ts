@@ -5,6 +5,7 @@ import { viewArg, viewResponse } from '../view.js';
 import { client } from '../client.js';
 import { CORE_ENTITIES } from '../entities.js';
 import { ATTRIBUTION_NOTE } from '../attribution.js';
+import { MUSIC_LOOKUP_META } from './hints.js';
 
 const ENTITY_ALT = CORE_ENTITIES.join('|');
 // Match a musicbrainz.org entity URL (or a bare "entity/mbid" path) and capture
@@ -39,6 +40,7 @@ export function registerResolveTools(server: McpServer): void {
         idempotent: true,
         openWorld: true,
       }),
+      _meta: MUSIC_LOOKUP_META,
       inputSchema: z.object({
         url: z
           .string()
