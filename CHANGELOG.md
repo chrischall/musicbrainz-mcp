@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/chrischall/musicbrainz-mcp/compare/v1.3.0...v1.3.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **deps:** Bump @chrischall/mcp-utils ([#156](https://github.com/chrischall/musicbrainz-mcp/issues/156)) ([1c008f1](https://github.com/chrischall/musicbrainz-mcp/commit/1c008f17230ccd2f30398d5a24f3f7dea0d05241))
+
 ## [1.3.0](https://github.com/chrischall/musicbrainz-mcp/compare/v1.2.7...v1.3.0) (2026-11-04)
 
 
